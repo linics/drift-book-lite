@@ -6,6 +6,7 @@
 
 .~*
 
+.worktrees/
 book-world/
 
 drift-book-lite/backend/.env
@@ -14,4 +15,3 @@ drift-book-lite/backend/node_modules/
 drift-book-lite/frontend/node_modules/
 drift-book-lite/frontend/dist/
 drift-book-lite/uploads/
-
