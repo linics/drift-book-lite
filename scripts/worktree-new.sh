@@ -2,6 +2,15 @@
 
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root_dir="$(cd "$script_dir/.." && pwd)"
+cd "$root_dir"
+
+if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
+  echo "Error: $root_dir is not a git repository."
+  exit 1
+fi
+
 if [[ $# -lt 1 ]]; then
   echo "Usage: scripts/worktree-new.sh <branch-name> [base-branch]"
   exit 1
@@ -9,7 +18,6 @@ fi
 
 branch_name="$1"
 base_branch="${2:-main}"
-root_dir="$(git rev-parse --show-toplevel)"
 worktree_dir="$root_dir/.worktrees/$branch_name"
 
 if [[ ! -d "$root_dir/.worktrees" ]]; then
