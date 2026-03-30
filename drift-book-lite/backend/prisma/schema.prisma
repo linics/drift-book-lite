@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum PageStatus {
+  open
+  full
+  inactive
+}
+
+enum MessageStatus {
+  pending
+  approved
+  rejected
+}
+
+model AdminUser {
+  id           Int            @id @default(autoincrement())
+  username     String         @unique
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  reviews      DriftMessage[] @relation("ReviewedBy")
+}
+
+model BookPage {
+  id               Int            @id @default(autoincrement())
+  qrCode           String         @unique
+  title            String
+  author           String
+  description      String
+  coverImagePath   String?
+  status           PageStatus     @default(open)
+  currentRoundNumber Int          @default(1)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  rounds           DriftRound[]
+  messages         DriftMessage[]
+}
+
+model DriftRound {
+  id         Int         @id @default(autoincrement())
+  pageId     Int
+  roundNumber Int
+  isLocked   Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  resetAt    DateTime?
+  page       BookPage    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  messages   DriftMessage[]
+
+  @@unique([pageId, roundNumber])
+}
+
+model DriftMessage {
+  id               Int           @id @default(autoincrement())
+  pageId           Int
+  roundId          Int
+  roundNumber      Int
+  level            Int
+  personalId       String
+  content          String
+  status           MessageStatus @default(pending)
+  isCurrent        Boolean       @default(true)
+  reviewedAt       DateTime?
+  reviewedById     Int?
+  rejectionReason  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  page             BookPage      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  round            DriftRound    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  reviewedBy       AdminUser?    @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([pageId, roundNumber, status])
+  @@unique([pageId, roundNumber, level, isCurrent])
+}
+
+model SiteAsset {
+  id             Int    @id @default(1)
+  schoolLogoPath String?
+  carouselImages Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
