@@ -1,14 +1,15 @@
 # Git Worktrees
 
-本仓库的工作树统一放在项目内的隐藏目录：
+本仓库的工作树统一放在 Codex 全局目录：
 
-`/.worktrees/`
+`~/.codex/worktrees/library-management-system/`
 
 ## 约定
 
-- `.worktrees/` 只作为本地工作目录，不纳入版本控制
+- 全局目录不在仓库内，不参与版本控制
 - 每个工作树对应一个分支，目录名默认与分支名一致
 - 默认从 `main` 派生新工作树
+- 如果设置了 `CODEX_HOME`，脚本会优先使用 `$CODEX_HOME/worktrees/<project-name>/`
 
 ## 创建工作树
 
@@ -41,11 +42,12 @@ git worktree list
 先移除工作树，再按需删除分支：
 
 ```bash
-git worktree remove .worktrees/<branch-name>
+git worktree remove ~/.codex/worktrees/library-management-system/<branch-name>
 git branch -d <branch-name>
 ```
 
 ## 说明
 
 - 当前主仓库仍然保留在项目根目录
+- 工作树默认创建在 `~/.codex/worktrees/library-management-system/`
 - `book-world/` 是参考项目，不参与当前工作树流程

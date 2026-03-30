@@ -18,16 +18,12 @@ fi
 
 branch_name="$1"
 base_branch="${2:-main}"
-worktree_dir="$root_dir/.worktrees/$branch_name"
+project_name="$(basename "$root_dir")"
+codex_home="${CODEX_HOME:-$HOME/.codex}"
+global_root="$codex_home/worktrees/$project_name"
+worktree_dir="$global_root/$branch_name"
 
-if [[ ! -d "$root_dir/.worktrees" ]]; then
-  mkdir -p "$root_dir/.worktrees"
-fi
-
-if ! git check-ignore -q "$root_dir/.worktrees" && ! git check-ignore -q ".worktrees"; then
-  echo "Error: .worktrees/ is not ignored by git."
-  exit 1
-fi
+mkdir -p "$global_root"
 
 if git show-ref --verify --quiet "refs/heads/$branch_name"; then
   git worktree add "$worktree_dir" "$branch_name"
