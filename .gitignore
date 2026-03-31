@@ -19,3 +19,9 @@ drift-book-lite/frontend/dist/
 drift-book-lite/admin-frontend/node_modules/
 drift-book-lite/admin-frontend/dist/
 drift-book-lite/uploads/
+
+/DESIGN.md
+/docs/
+/*.docx
+/*.csv
+/*.xlsx
