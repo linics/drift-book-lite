@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const { z } = require("zod");
+const multer = require("multer");
+const { Prisma } = require("@prisma/client");
 const { publicRouter } = require("./routes/public");
 const { adminRouter } = require("./routes/admin");
 const { bootstrapSystem } = require("./services/bootstrap");
@@ -24,7 +25,7 @@ async function createApp() {
   app.use("/api", publicRouter);
   app.use("/api/admin", adminRouter);
 
-  app.use((error, _req, res, _next) => {
+  app.use((error, req, res, _next) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         message: "请求参数不合法",
@@ -36,7 +37,33 @@ async function createApp() {
       return res.status(error.status).json({ message: error.message });
     }
 
-    console.error(error);
+    if (error instanceof multer.MulterError) {
+      return res.status(400).json({ message: `文件上传失败：${error.message}` });
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      const message =
+        error.code === "P2002"
+          ? "数据已存在，无法重复保存"
+          : error.code === "P2003"
+            ? "关联数据不存在或仍被引用，无法完成当前操作"
+            : error.code === "P2000"
+              ? "提交的数据过长，无法写入数据库"
+              : error.code === "P2011"
+                ? "存在必填字段为空，无法写入数据库"
+          : error.code === "P2025"
+            ? "目标记录不存在或已被删除"
+            : `数据库操作失败（${error.code}）`;
+      return res.status(error.code === "P2002" ? 409 : 400).json({ message });
+    }
+
+    console.error("Unhandled request error", {
+      method: req.method,
+      path: req.originalUrl,
+      adminUserId: req.adminUser?.sub || null,
+      message: error.message,
+      stack: error.stack,
+    });
     return res.status(500).json({ message: "服务器内部错误" });
   });
 

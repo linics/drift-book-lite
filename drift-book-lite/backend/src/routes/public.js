@@ -1,12 +1,17 @@
 const express = require("express");
 const { z } = require("zod");
 const { getSiteAsset } = require("../services/assets");
-const { getPublicPageByQrCode, createMessage } = require("../services/pages");
+const {
+  searchBooks,
+  getBookById,
+  listApprovedReviews,
+  createReview,
+} = require("../services/library");
 
 const router = express.Router();
 
-const createMessageSchema = z.object({
-  personalId: z.string().trim().min(1).max(50),
+const createReviewSchema = z.object({
+  displayName: z.string().trim().min(1).max(50),
   content: z.string().trim().min(1).max(500),
 });
 
@@ -15,21 +20,27 @@ router.get("/site-assets", async (_req, res) => {
   res.json(assets);
 });
 
-router.get("/pages/:qrCode", async (req, res) => {
-  const page = await getPublicPageByQrCode(req.params.qrCode);
-  res.json(page);
+router.get("/books/search", async (req, res) => {
+  const books = await searchBooks(req.query.q);
+  res.json({ books });
 });
 
-router.post("/pages/:qrCode/messages", async (req, res) => {
-  const payload = createMessageSchema.parse(req.body);
-  const message = await createMessage(req.params.qrCode, payload);
+router.get("/books/:bookId", async (req, res) => {
+  const book = await getBookById(req.params.bookId);
+  res.json({ book });
+});
+
+router.get("/books/:bookId/reviews", async (req, res) => {
+  const reviews = await listApprovedReviews(req.params.bookId);
+  res.json({ reviews });
+});
+
+router.post("/books/:bookId/reviews", async (req, res) => {
+  const payload = createReviewSchema.parse(req.body);
+  const review = await createReview(req.params.bookId, payload);
   res.status(201).json({
-    message: "留言已提交，等待管理员审核",
-    data: {
-      id: message.id,
-      level: message.level,
-      status: message.status,
-    },
+    message: "评语已提交，等待管理员审核",
+    review,
   });
 });
 

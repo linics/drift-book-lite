@@ -1,6 +1,7 @@
 require("dotenv").config();
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
+const { defaultProcessContent } = require("../src/services/assets");
 
 const prisma = new PrismaClient();
 
@@ -18,7 +19,7 @@ async function main() {
   await prisma.siteAsset.upsert({
     where: { id: 1 },
     update: {},
-    create: { id: 1, carouselImages: [] },
+    create: { id: 1, carouselImages: [], processContent: defaultProcessContent },
   });
 }
 

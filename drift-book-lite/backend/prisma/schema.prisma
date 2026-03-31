@@ -7,82 +7,107 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum PageStatus {
-  open
-  full
-  inactive
-}
-
-enum MessageStatus {
+enum ReviewStatus {
   pending
   approved
+  hidden
   rejected
 }
 
+enum ImportMode {
+  create_only
+  upsert
+}
+
+enum ImportStatus {
+  processing
+  completed
+  partial
+  failed
+}
+
 model AdminUser {
-  id           Int            @id @default(autoincrement())
-  username     String         @unique
-  passwordHash String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  reviews      DriftMessage[] @relation("ReviewedBy")
+  id             Int           @id @default(autoincrement())
+  username       String        @unique
+  passwordHash   String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  reviews        BookReview[]  @relation("ReviewedBy")
+  editedReviews  BookReview[]  @relation("EditedBy")
+  importBatches  ImportBatch[]
 }
 
-model BookPage {
-  id               Int            @id @default(autoincrement())
-  qrCode           String         @unique
-  title            String
-  author           String
-  description      String
-  coverImagePath   String?
-  status           PageStatus     @default(open)
-  currentRoundNumber Int          @default(1)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  rounds           DriftRound[]
-  messages         DriftMessage[]
+model Book {
+  id                  Int          @id @default(autoincrement())
+  bookId              String       @unique
+  title               String
+  normalizedTitle     String
+  author              String
+  publishPlace        String?
+  publisher           String
+  publishDateText     String?
+  barcode             String?
+  isbn                String?
+  callNumber          String?
+  subtitle            String?
+  categoryCode        String?
+  categoryLabel       String?
+  publishYear         Int?
+  publishDecade       String?
+  totalCopies         Int
+  availableCopies     Int
+  sourceImportBatchId Int?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  reviews             BookReview[]
+  sourceImportBatch   ImportBatch? @relation(fields: [sourceImportBatchId], references: [id], onDelete: SetNull)
+
+  @@index([normalizedTitle])
 }
 
-model DriftRound {
-  id         Int         @id @default(autoincrement())
-  pageId     Int
-  roundNumber Int
-  isLocked   Boolean     @default(false)
-  createdAt  DateTime    @default(now())
-  resetAt    DateTime?
-  page       BookPage    @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  messages   DriftMessage[]
+model BookReview {
+  id              Int          @id @default(autoincrement())
+  bookId          Int?
+  displayName     String
+  originalContent String
+  finalContent    String
+  status          ReviewStatus @default(pending)
+  reviewedAt      DateTime?
+  reviewedById    Int?
+  editedAt        DateTime?
+  editedById      Int?
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  book            Book?        @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  reviewedBy      AdminUser?   @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  editedBy        AdminUser?   @relation("EditedBy", fields: [editedById], references: [id])
 
-  @@unique([pageId, roundNumber])
+  @@index([bookId, status, createdAt])
 }
 
-model DriftMessage {
-  id               Int           @id @default(autoincrement())
-  pageId           Int
-  roundId          Int
-  roundNumber      Int
-  level            Int
-  personalId       String
-  content          String
-  status           MessageStatus @default(pending)
-  isCurrent        Boolean       @default(true)
-  reviewedAt       DateTime?
-  reviewedById     Int?
-  rejectionReason  String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  page             BookPage      @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  round            DriftRound    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  reviewedBy       AdminUser?    @relation("ReviewedBy", fields: [reviewedById], references: [id])
-
-  @@index([pageId, roundNumber, status])
-  @@unique([pageId, roundNumber, level, isCurrent])
+model ImportBatch {
+  id          Int          @id @default(autoincrement())
+  fileName    String
+  catalogName String
+  importMode  ImportMode
+  status      ImportStatus
+  totalRows   Int
+  successRows Int
+  failedRows  Int
+  failures    Json
+  createdById Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  createdBy   AdminUser?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  books       Book[]
 }
 
 model SiteAsset {
-  id             Int    @id @default(1)
+  id             Int      @id @default(1)
   schoolLogoPath String?
   carouselImages Json
+  processContent Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

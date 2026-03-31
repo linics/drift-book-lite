@@ -1,28 +1,27 @@
 const express = require("express");
-const path = require("path");
 const { z } = require("zod");
 const { prisma } = require("../lib/prisma");
 const { adminUsername } = require("../lib/env");
 const { signAdminToken, verifyPassword } = require("../utils/auth");
 const { requireAdmin } = require("../middleware/adminAuth");
-const { uploadImage, uploadMemory } = require("../middleware/uploads");
+const { uploadMemory, uploadSiteAsset } = require("../middleware/uploads");
 const {
-  importPagesFromCsv,
-  listAdminPages,
-  getAdminPage,
-  updatePage,
-  listPendingMessages,
-  approveMessage,
-  rejectMessage,
-  resetPage,
-  generateQrBuffer,
-} = require("../services/pages");
+  importCatalogFromCsv,
+  listImportBatches,
+  getImportBatchById,
+  listAdminBooks,
+  deleteImportBatch,
+  updateBook,
+  listAdminReviews,
+  updateReview,
+} = require("../services/library");
 const {
   getSiteAsset,
   updateSiteAsset,
   bootstrapFromMaterials,
+  uploadLogoAsset,
+  uploadCarouselAsset,
 } = require("../services/assets");
-const { normalizePublicPath } = require("../utils/paths");
 const { HttpError } = require("../utils/httpError");
 
 const router = express.Router();
@@ -32,14 +31,24 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-const updatePageSchema = z.object({
+const updateBookSchema = z.object({
   title: z.string().trim().min(1).optional(),
   author: z.string().trim().min(1).optional(),
-  description: z.string().trim().min(1).optional(),
-  status: z.enum(["open", "full", "inactive"]).optional(),
+  publishPlace: z.string().trim().optional().nullable(),
+  publisher: z.string().trim().min(1).optional(),
+  publishDateText: z.string().trim().optional().nullable(),
+  barcode: z.string().trim().optional().nullable(),
+  subtitle: z.string().trim().optional().nullable(),
 });
 
-const rejectSchema = z.object({
+const importSchema = z.object({
+  catalogName: z.string().trim().min(1).default("未命名目录"),
+  importMode: z.enum(["create_only", "upsert"]).default("create_only"),
+});
+
+const updateReviewSchema = z.object({
+  action: z.enum(["approve", "reject", "hide"]),
+  finalContent: z.string().trim().min(1).max(500).optional(),
   rejectionReason: z.string().trim().max(200).optional(),
 });
 
@@ -55,7 +64,7 @@ const updateAssetSchema = z.object({
         label: z.string(),
       })
     )
-    .default([]),
+    .optional(),
 });
 
 router.post("/login", async (req, res) => {
@@ -78,67 +87,73 @@ router.post("/login", async (req, res) => {
 
 router.use(requireAdmin);
 
-router.get("/pages", async (_req, res) => {
-  const pages = await listAdminPages();
-  res.json({ pages });
+router.get("/books", async (req, res) => {
+  const result = await listAdminBooks({
+    query: req.query.q,
+    page: req.query.page,
+    pageSize: req.query.pageSize,
+  });
+  res.json(result);
 });
 
-router.get("/pages/:id", async (req, res) => {
-  const page = await getAdminPage(req.params.id);
-  res.json(page);
+router.patch("/books/:bookId", async (req, res) => {
+  const payload = updateBookSchema.parse(req.body);
+  const book = await updateBook(req.params.bookId, payload);
+  res.json({ book });
 });
 
-router.patch("/pages/:id", uploadImage.single("coverImage"), async (req, res) => {
-  const parsed = updatePageSchema.parse(req.body);
-  const data = { ...parsed };
-  if (req.file) {
-    data.coverImagePath = normalizePublicPath(req.file.path);
-  }
-  const page = await updatePage(req.params.id, data);
-  res.json(page);
-});
-
-router.post("/pages/import", uploadMemory.single("file"), async (req, res) => {
+router.post("/imports", uploadMemory.single("file"), async (req, res) => {
   if (!req.file) {
-    throw new HttpError(400, "缺少 CSV 文件");
+    throw new HttpError(400, "缺少导入文件");
   }
-  const pages = await importPagesFromCsv(req.file.buffer);
-  res.status(201).json({ count: pages.length, pages });
+  const payload = importSchema.parse(req.body);
+  const batch = await importCatalogFromCsv(req.file.buffer, {
+    fileName: req.file.originalname,
+    catalogName: payload.catalogName,
+    importMode: payload.importMode,
+    adminUserId: req.adminUser.sub,
+  });
+  res.status(201).json({
+    batch: {
+      id: batch.id,
+      fileName: batch.fileName,
+      catalogName: batch.catalogName,
+      importMode: batch.importMode,
+      status: batch.status,
+      totalRows: batch.totalRows,
+      successRows: batch.successRows,
+      failedRows: batch.failedRows,
+    },
+  });
 });
 
-router.post("/pages/:id/qrcode", async (req, res) => {
-  const buffer = await generateQrBuffer(req.params.id);
-  res.setHeader("Content-Type", "image/png");
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename="page-${req.params.id}.png"`
-  );
-  res.send(buffer);
+router.get("/imports", async (_req, res) => {
+  const batches = await listImportBatches();
+  res.json({ batches });
 });
 
-router.get("/messages/pending", async (_req, res) => {
-  const messages = await listPendingMessages();
-  res.json({ messages });
+router.get("/imports/:batchId", async (req, res) => {
+  const batch = await getImportBatchById(req.params.batchId);
+  res.json({ batch });
 });
 
-router.post("/messages/:id/approve", async (req, res) => {
-  const message = await approveMessage(req.params.id, req.adminUser.sub);
-  res.json({ message });
+router.delete("/imports/:batchId", async (req, res) => {
+  const result = await deleteImportBatch(req.params.batchId);
+  res.json(result);
 });
 
-router.post("/messages/:id/reject", async (req, res) => {
-  const payload = rejectSchema.parse(req.body);
-  const message = await rejectMessage(
-    req.params.id,
-    req.adminUser.sub,
-    payload.rejectionReason
-  );
-  res.json({ message });
+router.get("/reviews", async (req, res) => {
+  const reviews = await listAdminReviews({
+    status: req.query.status,
+    bookId: req.query.bookId,
+  });
+  res.json({ reviews });
 });
 
-router.post("/pages/:id/reset", async (req, res) => {
-  const round = await resetPage(req.params.id);
-  res.json({ round });
+router.patch("/reviews/:reviewId", async (req, res) => {
+  const payload = updateReviewSchema.parse(req.body);
+  const review = await updateReview(req.params.reviewId, req.adminUser.sub, payload);
+  res.json({ review });
 });
 
 router.get("/assets", async (_req, res) => {
@@ -149,6 +164,16 @@ router.get("/assets", async (_req, res) => {
 router.post("/assets/bootstrap-from-materials", async (_req, res) => {
   const assets = await bootstrapFromMaterials();
   res.json(assets);
+});
+
+router.post("/assets/logo", uploadSiteAsset.single("file"), async (req, res) => {
+  const assets = await uploadLogoAsset(req.file);
+  res.status(201).json({ asset: assets });
+});
+
+router.post("/assets/carousel", uploadSiteAsset.single("file"), async (req, res) => {
+  const asset = await uploadCarouselAsset(req.file, req.body.label);
+  res.status(201).json({ asset });
 });
 
 router.patch("/assets", async (req, res) => {

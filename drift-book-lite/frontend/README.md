@@ -1,16 +1,23 @@
-# React + Vite
+# Student Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+学生端前端运行在 `5174` 端口，提供统一活动首页、图书搜索页和图书详情页。
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+cp .env.example .env
+npm install
+npm run dev -- --host 127.0.0.1
+```
 
-## React Compiler
+默认情况下：
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `VITE_API_BASE_URL=/api`
+- `/api` 通过 Vite 代理到 `http://127.0.0.1:8080`
+- `/uploads` 通过 Vite 代理到 `http://127.0.0.1:8080`
 
-## Expanding the ESLint configuration
+如果学生端部署在与后端不同的域名或端口，请在构建前设置显式 API 地址，例如：
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+VITE_API_BASE_URL=http://localhost:8080/api npm run build
+```
