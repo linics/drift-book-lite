@@ -1,0 +1,11 @@
+{
+  "builder": {
+    "gc": {
+      "defaultKeepStorage": "20GB",
+      "enabled": true
+    }
+  },
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io"
+  ]
+}

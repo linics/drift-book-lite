@@ -189,6 +189,27 @@ Docker 官方文档说明，Docker Desktop 可以在设置里的 Docker Engine J
 
 修改后点击 `Apply` 或重启 Docker Desktop。
 
+如果你暂时没有云厂商控制台里的专属加速地址，可以先用一个公开可访问的 Docker Hub 镜像加速地址做应急验证：
+
+```json
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io"
+  ]
+}
+```
+
+仓库里也提供了一个可直接参考的完整示例文件：
+
+- `docker-daemon.daocloud.example.json`
+
+说明：
+
+- 这是 Docker Engine 的守护进程配置示例，不是项目 `.env`
+- 该地址用于加速 `docker.io` 镜像拉取
+- 公开镜像服务存在容量、限流、同步延迟等不确定性，更适合“先拉起部署验证”
+- 如果学校网络后续长期使用，仍建议换成你自己的云厂商专属加速地址或内网缓存服务
+
 #### Linux 上的 Docker Engine
 
 Docker 官方文档说明，普通 Linux 安装的守护进程配置文件一般在：
