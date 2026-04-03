@@ -376,3 +376,25 @@ npm.cmd run build
 1. 进入对应前端目录
 2. 重新执行 `npm.cmd run build`
 3. 重启对应静态服务
+
+## 懒人启动方式
+
+仓库根目录提供了 5 个 Windows 启动脚本：
+
+- `start-all.bat`
+- `start-backend.bat`
+- `start-frontend.bat`
+- `start-admin.bat`
+- `build-frontends.bat`
+
+用法：
+
+1. 首次部署或前端代码有变更时，先双击 `build-frontends.bat`
+2. 日常启动时，直接双击 `start-all.bat`
+3. 如果只想单独重启某个服务，就双击对应的单独脚本
+
+说明：
+
+- 这些脚本都按仓库根目录的相对路径工作
+- `start-all.bat` 会打开 3 个独立窗口
+- 如果前端构建目录 `dist` 不存在，前端脚本会提示先执行 `build-frontends.bat`
