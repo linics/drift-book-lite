@@ -109,6 +109,10 @@
 
 这是最适合“全新电脑、尽量少装依赖、方便搬迁”的方式。
 
+如果学校网络导致 Docker 拉镜像困难，也可以改走 Windows 无 Docker 部署，见：
+
+- [WINDOWS-NO-DOCKER-DEPLOY.md](/Users/linics/Documents/githubfiles/library-management-system/WINDOWS-NO-DOCKER-DEPLOY.md)
+
 ### 1. 部署电脑最低要求
 
 建议准备：
