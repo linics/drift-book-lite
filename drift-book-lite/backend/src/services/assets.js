@@ -19,7 +19,7 @@ const defaultProcessContent = [
   {
     id: "step-3",
     title: "查看图书详情",
-    description: "进入图书详情页，查看书名、作者、出版社和馆藏可借信息。",
+    description: "进入图书详情页，查看书名、作者、出版社和馆藏信息。",
   },
   {
     id: "step-4",

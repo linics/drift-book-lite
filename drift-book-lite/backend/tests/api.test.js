@@ -111,32 +111,40 @@ describe("drift book lite api", () => {
     expect(searchRes.body.books[0]).toEqual(
       expect.objectContaining({
         title: "共产党宣言",
-        author: "马克思/恩格斯",
+        author: "马克思",
+        authors: ["马克思/恩格斯"],
         publishPlace: "北京",
         publisher: "人民出版社",
+        publishers: ["人民出版社"],
         publishDateText: "1848",
+        publishDateTexts: ["1848"],
         barcode: "BC1001",
+        barcodes: ["BC1001"],
         subtitle: "经典著作",
+        totalCopies: 5,
       })
     );
     expect(searchRes.body.books[0]).not.toHaveProperty("bookId");
-    expect(searchRes.body.books[0]).not.toHaveProperty("totalCopies");
 
     const detailRes = await request(app).get(`/api/books/${searchRes.body.books[0].id}`);
     expect(detailRes.status).toBe(200);
     expect(detailRes.body.book).toEqual(
       expect.objectContaining({
         title: "共产党宣言",
-        author: "马克思/恩格斯",
+        author: "马克思",
+        authors: ["马克思/恩格斯"],
         publishPlace: "北京",
         publisher: "人民出版社",
+        publishers: ["人民出版社"],
         publishDateText: "1848",
+        publishDateTexts: ["1848"],
         barcode: "BC1001",
+        barcodes: ["BC1001"],
         subtitle: "经典著作",
+        totalCopies: 5,
       })
     );
     expect(detailRes.body.book).not.toHaveProperty("bookId");
-    expect(detailRes.body.book).not.toHaveProperty("availableCopies");
   });
 
   test("imports a utf8 bom catalog when book_id is the first column", async () => {
@@ -155,6 +163,29 @@ describe("drift book lite api", () => {
     expect(importRes.status).toBe(201);
     expect(importRes.body.batch.successRows).toBe(1);
     expect(importRes.body.batch.failedRows).toBe(0);
+  });
+
+  test("keeps chinese import filenames readable in batch history", async () => {
+    const csv = Buffer.from(
+      "book_id,title,author,publisher,total_copies,available_copies\n1001,测试书,作者甲,出版社甲,5,3\n",
+      "utf8"
+    );
+
+    const importRes = await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "中文文件名目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "图书信息.csv");
+
+    expect(importRes.status).toBe(201);
+    expect(importRes.body.batch.fileName).toBe("图书信息.csv");
+
+    const listRes = await request(app)
+      .get("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.batches[0].fileName).toBe("图书信息.csv");
   });
 
   test("tracks failed rows with line numbers during import", async () => {
@@ -247,7 +278,466 @@ describe("drift book lite api", () => {
     const searchRes = await request(app).get("/api/books/search").query({ q: "测试书新版" });
     expect(searchRes.body.books[0].publisher).toBe("出版社乙");
     expect(searchRes.body.books[0].title).toBe("测试书新版");
-    expect(searchRes.body.books[0]).not.toHaveProperty("totalCopies");
+    expect(searchRes.body.books[0]).toHaveProperty("totalCopies", 8);
+  });
+
+  test("merges same title and first author books in public search and detail", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,barcode,total_copies,available_copies",
+        "1001,测试合集,作者甲,出版社甲,BC1001,2,1",
+        "1002,测试合集,作者甲、作者乙,出版社甲,BC1002,3,2",
+        "1003,测试合集,作者甲、作者丙,出版社乙,BC1003,4,4",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const importRes = await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "合并目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "grouped.csv");
+
+    expect(importRes.status).toBe(201);
+    expect(importRes.body.batch.successRows).toBe(3);
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "测试合集" });
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body.books).toHaveLength(1);
+    const [mergedBook] = searchRes.body.books;
+    expect(mergedBook).toEqual(
+      expect.objectContaining({
+        title: "测试合集",
+        author: "作者甲",
+        totalCopies: 9,
+        barcodes: ["BC1001", "BC1002", "BC1003"],
+      })
+    );
+    expect(String(mergedBook.id)).not.toMatch(/^\d+$/);
+
+    const detailRes = await request(app).get(`/api/books/${mergedBook.id}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.book).toEqual(
+      expect.objectContaining({
+        title: "测试合集",
+        author: "作者甲",
+        totalCopies: 9,
+        barcodes: ["BC1001", "BC1002", "BC1003"],
+        authors: ["作者甲", "作者甲、作者乙", "作者甲、作者丙"],
+        publishers: ["出版社甲", "出版社乙"],
+      })
+    );
+  });
+
+  test("merges books when year isbn secondary author and publisher suffix differ", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,publish_date,isbn,barcode,total_copies,available_copies",
+        "3001,宣言研究,马克思、恩格斯,人民出版社,1978,ISBN-1,BC3001,2,2",
+        "3002,宣言研究,马克思、恩格斯、李四,人民出版社有限公司,2009,ISBN-2,BC3002,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const importRes = await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "弱差异合并目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "merge-soft-diff.csv");
+
+    expect(importRes.status).toBe(201);
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "宣言研究" });
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body.books).toHaveLength(1);
+    expect(searchRes.body.books[0]).toEqual(
+      expect.objectContaining({
+        title: "宣言研究",
+        totalCopies: 3,
+        barcodes: ["BC3001", "BC3002"],
+      })
+    );
+  });
+
+  test("does not merge books when subtitle differs", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,subtitle,barcode,total_copies,available_copies",
+        "4001,宣言导读,作者甲,出版社甲,导读本,BC4001,1,1",
+        "4002,宣言导读,作者甲,出版社甲,注释本,BC4002,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const importRes = await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "副标题拆分目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "split-by-subtitle.csv");
+
+    expect(importRes.status).toBe(201);
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "宣言导读" });
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body.books).toHaveLength(2);
+    expect(searchRes.body.books.map((book) => book.subtitle).sort()).toEqual(["导读本", "注释本"]);
+  });
+
+  test("shares reviews across grouped books and shows aggregate detail", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,barcode,total_copies,available_copies",
+        "2001,公共评语书,作者乙,出版社乙,BC2001,1,1",
+        "2002,公共评语书,作者乙,出版社乙,BC2002,1,0",
+      ].join("\n"),
+      "utf8"
+    );
+
+    await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "评语目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "reviews.csv");
+
+    const books = await prisma.book.findMany({
+      where: { title: "公共评语书" },
+      orderBy: { id: "asc" },
+    });
+    expect(books).toHaveLength(2);
+
+    await prisma.bookReview.create({
+      data: {
+        bookId: books[1].id,
+        displayName: "先来的同学",
+        originalContent: "这本书值得一读",
+        finalContent: "这本书值得一读",
+        status: "approved",
+        reviewedAt: new Date(),
+      },
+    });
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "公共评语书" });
+    const groupedId = searchRes.body.books[0].id;
+
+    const createReviewRes = await request(app).post(`/api/books/${groupedId}/reviews`).send({
+      displayName: "后来的同学",
+      content: "我也很喜欢这本书",
+    });
+    expect(createReviewRes.status).toBe(201);
+
+    const pendingRes = await request(app)
+      .get("/api/admin/reviews")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ status: "pending" });
+    const pendingReview = pendingRes.body.reviews.find(
+      (review) => review.displayName === "后来的同学"
+    );
+    expect(pendingReview).toBeTruthy();
+
+    const approveRes = await request(app)
+      .patch(`/api/admin/reviews/${pendingReview.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        action: "approve",
+        finalContent: "我也很喜欢这本书",
+      });
+    expect(approveRes.status).toBe(200);
+
+    const reviewsRes = await request(app).get(`/api/books/${groupedId}/reviews`);
+    expect(reviewsRes.status).toBe(200);
+    expect(reviewsRes.body.reviews).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ displayName: "先来的同学" }),
+        expect.objectContaining({ displayName: "后来的同学" }),
+      ])
+    );
+
+    const detailRes = await request(app).get(`/api/books/${groupedId}`);
+    expect(detailRes.body.book.barcodes).toEqual(["BC2001", "BC2002"]);
+    expect(detailRes.body.book.totalCopies).toBe(2);
+    expect(detailRes.body.book).not.toHaveProperty("availableCopies");
+  });
+
+  test("keeps numeric review submissions bound to the requested physical copy", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,barcode,total_copies,available_copies",
+        "2101,定向评语书,作者甲,出版社甲,BC2101,1,1",
+        "2102,定向评语书,作者甲,出版社乙,BC2102,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+
+    await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "定向评语目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "review-target.csv");
+
+    const books = await prisma.book.findMany({
+      where: { title: "定向评语书" },
+      orderBy: { id: "asc" },
+    });
+    expect(books).toHaveLength(2);
+
+    const reviewRes = await request(app).post(`/api/books/${books[1].id}/reviews`).send({
+      displayName: "指定副本读者",
+      content: "这条评语必须留在第二本副本上",
+    });
+    expect(reviewRes.status).toBe(201);
+
+    const review = await prisma.bookReview.findUnique({
+      where: { id: reviewRes.body.review.id },
+    });
+    expect(review).toEqual(
+      expect.objectContaining({
+        bookId: books[1].id,
+        displayName: "指定副本读者",
+      })
+    );
+
+    await prisma.bookReview.create({
+      data: {
+        bookId: books[0].id,
+        displayName: "第一本副本读者",
+        originalContent: "这条评语只属于第一本副本",
+        finalContent: "这条评语只属于第一本副本",
+        status: "approved",
+        reviewedAt: new Date(),
+      },
+    });
+
+    await prisma.bookReview.update({
+      where: { id: review.id },
+      data: {
+        status: "approved",
+        reviewedAt: new Date(),
+      },
+    });
+
+    const detailRes = await request(app).get(`/api/books/${books[1].id}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.book).toEqual(
+      expect.objectContaining({
+        id: books[1].id,
+        title: "定向评语书",
+        publisher: "出版社乙",
+        publishers: ["出版社乙"],
+        barcode: "BC2102",
+        barcodes: ["BC2102"],
+        totalCopies: 1,
+        groupBookCount: 1,
+      })
+    );
+
+    const reviewsRes = await request(app).get(`/api/books/${books[1].id}/reviews`);
+    expect(reviewsRes.status).toBe(200);
+    expect(reviewsRes.body.reviews).toEqual([
+      expect.objectContaining({
+        displayName: "指定副本读者",
+        content: "这条评语必须留在第二本副本上",
+      }),
+    ]);
+  });
+
+  test("migrates grouped reviews to a surviving copy when deleting the representative batch", async () => {
+    const batchOneCsv = Buffer.from(
+      [
+        "book_id,title,author,publisher,barcode,total_copies,available_copies",
+        "2201,迁移评语书,作者乙,出版社乙,BC2201,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+    const batchTwoCsv = Buffer.from(
+      [
+        "book_id,title,author,publisher,barcode,total_copies,available_copies",
+        "2202,迁移评语书,作者乙,出版社乙,BC2202,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const batchOneRes = await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "迁移评语批次一")
+      .field("importMode", "create_only")
+      .attach("file", batchOneCsv, "review-migrate-1.csv");
+    expect(batchOneRes.status).toBe(201);
+
+    const batchTwoRes = await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "迁移评语批次二")
+      .field("importMode", "create_only")
+      .attach("file", batchTwoCsv, "review-migrate-2.csv");
+    expect(batchTwoRes.status).toBe(201);
+
+    const books = await prisma.book.findMany({
+      where: { title: "迁移评语书" },
+      orderBy: { id: "asc" },
+    });
+    expect(books).toHaveLength(2);
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "迁移评语书" });
+    expect(searchRes.status).toBe(200);
+    const groupedId = searchRes.body.books[0].id;
+
+    const createReviewRes = await request(app).post(`/api/books/${groupedId}/reviews`).send({
+      displayName: "迁移后的读者",
+      content: "代表副本删除后也应继续可见",
+    });
+    expect(createReviewRes.status).toBe(201);
+
+    const pendingRes = await request(app)
+      .get("/api/admin/reviews")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ status: "pending" });
+    const pendingReview = pendingRes.body.reviews.find(
+      (review) => review.displayName === "迁移后的读者"
+    );
+    expect(pendingReview).toBeTruthy();
+
+    const approveRes = await request(app)
+      .patch(`/api/admin/reviews/${pendingReview.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        action: "approve",
+        finalContent: "代表副本删除后也应继续可见",
+      });
+    expect(approveRes.status).toBe(200);
+    expect(approveRes.body.review.bookId).toBe(books[0].id);
+
+    const deleteRes = await request(app)
+      .delete(`/api/admin/imports/${batchOneRes.body.batch.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(deleteRes.status).toBe(200);
+
+    const migratedReview = await prisma.bookReview.findUnique({
+      where: { id: pendingReview.id },
+    });
+    expect(migratedReview).toEqual(
+      expect.objectContaining({
+        bookId: books[1].id,
+        status: "approved",
+      })
+    );
+
+    const publicReviewRes = await request(app).get(`/api/books/${groupedId}/reviews`);
+    expect(publicReviewRes.status).toBe(200);
+    expect(publicReviewRes.body.reviews).toEqual([
+      expect.objectContaining({
+        displayName: "迁移后的读者",
+        content: "代表副本删除后也应继续可见",
+      }),
+    ]);
+
+    const approvedRes = await request(app)
+      .get("/api/admin/reviews")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ status: "approved" });
+    const approvedReview = approvedRes.body.reviews.find((review) => review.id === pendingReview.id);
+    expect(approvedReview).toEqual(
+      expect.objectContaining({
+        bookId: books[1].id,
+        displayName: "迁移后的读者",
+      })
+    );
+
+    expect(batchTwoRes.status).toBe(201);
+  });
+
+  test("aggregated detail exposes multi publisher and multi publish date lists", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,publish_date,barcode,total_copies,available_copies",
+        "5001,跨版图书,作者甲、作者乙,出版社甲,1998,BC5001,1,1",
+        "5002,跨版图书,作者甲、作者丙,出版社乙,2006,BC5002,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+
+    await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "跨版目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "multi-meta.csv");
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "跨版图书" });
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body.books).toHaveLength(1);
+
+    const detailRes = await request(app).get(`/api/books/${searchRes.body.books[0].id}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.book).toEqual(
+      expect.objectContaining({
+        title: "跨版图书",
+        authors: ["作者甲、作者乙", "作者甲、作者丙"],
+        publishers: ["出版社甲", "出版社乙"],
+        publishDateTexts: ["1998", "2006"],
+      })
+    );
+  });
+
+  test("merges books when author strings differ only by role suffixes and trailing 等", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,publish_date,barcode,total_copies,available_copies",
+        '6001,共产党宣言,"马克思,恩格斯著;陈望道译",湖南人民出版社有限责任公,2021,BC6001,1,1',
+        "6002,共产党宣言,马克思等,中央编译出版社,1998/01,BC6002,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const importRes = await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "责任者归一目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "author-normalization.csv");
+
+    expect(importRes.status).toBe(201);
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "共产党宣言" });
+    const merged = searchRes.body.books.find((book) => book.barcodes?.includes("BC6001"));
+    expect(merged).toBeTruthy();
+    expect(merged.barcodes).toEqual(expect.arrayContaining(["BC6001", "BC6002"]));
+  });
+
+  test("merges books when author strings use combined 等著 and 等编 suffixes", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,barcode,total_copies,available_copies",
+        "6101,组合尾缀书,作者甲等著,出版社甲,BC6101,1,1",
+        "6102,组合尾缀书,作者甲等编,出版社甲,BC6102,1,1",
+        "6103,组合尾缀书,作者甲,出版社甲,BC6103,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const importRes = await request(app)
+      .post("/api/admin/imports")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .field("catalogName", "组合尾缀目录")
+      .field("importMode", "create_only")
+      .attach("file", csv, "combined-suffix.csv");
+    expect(importRes.status).toBe(201);
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "组合尾缀书" });
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body.books).toHaveLength(1);
+    expect(searchRes.body.books[0]).toEqual(
+      expect.objectContaining({
+        title: "组合尾缀书",
+        totalCopies: 3,
+        barcodes: ["BC6101", "BC6102", "BC6103"],
+      })
+    );
   });
 
   test("deleting an old batch keeps books reassigned to a newer upsert batch", async () => {

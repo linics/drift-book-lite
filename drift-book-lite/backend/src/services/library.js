@@ -6,6 +6,7 @@ const { prisma } = require("../lib/prisma");
 const { HttpError } = require("../utils/httpError");
 
 const SEARCH_CANDIDATE_LIMIT = 80;
+const SEARCH_BATCH_SIZE = 80;
 
 const requiredCatalogColumns = [
   "book_id",
@@ -65,6 +66,19 @@ const categoryLabels = {
   X: "环境科学、安全科学",
   Z: "综合性图书",
 };
+
+function decodeUploadFilename(input) {
+  const fileName = String(input || "").trim();
+  if (!fileName) return fileName;
+
+  try {
+    const decoded = Buffer.from(fileName, "latin1").toString("utf8");
+    if (decoded.includes("�")) return fileName;
+    return decoded;
+  } catch (_error) {
+    return fileName;
+  }
+}
 
 function normalizeTitle(input) {
   return String(input || "")
@@ -321,6 +335,282 @@ function parseCatalogFile(buffer, fileName = "") {
   return parseCatalogCsv(buffer);
 }
 
+function normalizeSubtitleForGrouping(input) {
+  return normalizeTitle(input || "");
+}
+
+const groupingAuthorSuffixPattern = /(编著|译注|校注|校译|主编|著|编|译|注|等)$/u;
+
+function stripGroupingAuthorSuffixes(input) {
+  let normalized = String(input || "").trim();
+
+  while (normalized) {
+    const next = normalized.replace(groupingAuthorSuffixPattern, "").trim();
+    if (next === normalized) break;
+    normalized = next;
+  }
+
+  return normalized;
+}
+
+function tokenizeAuthorForGrouping(input) {
+  return String(input || "")
+    .normalize("NFKC")
+    .replace(/[，,、；;／/]+/g, "|")
+    .replace(/[:：]/g, "|")
+    .split("|")
+    .map((item) =>
+      normalizeTitle(stripGroupingAuthorSuffixes(item))
+    )
+    .filter(Boolean);
+}
+
+function normalizeFirstAuthorForGrouping(input) {
+  const tokens = tokenizeAuthorForGrouping(input);
+  if (tokens.length === 0) return "";
+  return tokens[0];
+}
+
+function getFirstAuthorDisplay(input) {
+  return (
+    String(input || "")
+      .normalize("NFKC")
+      .replace(/[，,、；;／/]+/g, "|")
+      .split("|")
+      .map((item) => stripGroupingAuthorSuffixes(String(item || "").trim()))
+      .filter(Boolean)[0] || ""
+  );
+}
+
+function normalizePublisherForGrouping(input) {
+  return normalizeTitle(
+    String(input || "")
+      .replace(/股份有限公司$/u, "")
+      .replace(/有限责任公司$/u, "")
+      .replace(/有限公司$/u, "")
+      .replace(/出版集团$/u, "出版社")
+  );
+}
+
+function buildGroupIdentity({ title, author, publisher, subtitle }) {
+  return {
+    titleKey: normalizeTitle(title || ""),
+    authorKey: normalizeFirstAuthorForGrouping(author || ""),
+    publisherKey: normalizePublisherForGrouping(publisher || ""),
+    subtitleKey: normalizeSubtitleForGrouping(subtitle || ""),
+  };
+}
+
+function normalizeStoredGroupIdentity(identity) {
+  if (!identity || typeof identity !== "object") return null;
+  const normalized = {
+    titleKey: String(identity.titleKey || "").trim(),
+    authorKey: String(identity.authorKey || "").trim(),
+    publisherKey: String(identity.publisherKey || "").trim(),
+    subtitleKey: String(identity.subtitleKey || "").trim(),
+  };
+  if (
+    !normalized.titleKey ||
+    (!normalized.authorKey && !normalized.publisherKey)
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function shouldRespectPublisherForPublicGrouping(identity) {
+  return !identity.authorKey && Boolean(identity.publisherKey);
+}
+
+function matchesGroupIdentity(book, identity, { respectPublisher = false } = {}) {
+  const bookIdentity = getBookGroupIdentity(book);
+  if (
+    bookIdentity.titleKey !== identity.titleKey ||
+    bookIdentity.authorKey !== identity.authorKey ||
+    bookIdentity.subtitleKey !== identity.subtitleKey
+  ) {
+    return false;
+  }
+
+  if (respectPublisher && identity.publisherKey) {
+    return bookIdentity.publisherKey === identity.publisherKey;
+  }
+
+  return true;
+}
+
+function encodeLegacyGroupId(identity) {
+  return Buffer.from(JSON.stringify(identity)).toString("base64url");
+}
+
+function encodePublicGroupId(anchorBookId, identity) {
+  return Buffer.from(
+    JSON.stringify({
+      v: 2,
+      anchorBookId,
+      identity,
+    })
+  ).toString("base64url");
+}
+
+function decodeGroupId(groupId) {
+  try {
+    const parsed = JSON.parse(Buffer.from(String(groupId || ""), "base64url").toString("utf8"));
+    if (
+      parsed &&
+      parsed.v === 2 &&
+      Number.isInteger(parsed.anchorBookId) &&
+      parsed.anchorBookId > 0
+    ) {
+      return {
+        type: "public",
+        anchorBookId: parsed.anchorBookId,
+        identity: normalizeStoredGroupIdentity(parsed.identity),
+      };
+    }
+
+    const identity = normalizeStoredGroupIdentity(parsed) || buildGroupIdentity(parsed || {});
+    if (!identity.titleKey || !identity.authorKey) {
+      throw new Error("invalid");
+    }
+    return {
+      type: "legacy",
+      identity,
+    };
+  } catch (_error) {
+    throw new HttpError(400, "图书 ID 不合法");
+  }
+}
+
+function isNumericPublicId(publicId) {
+  return /^[1-9]\d*$/.test(String(publicId || "").trim());
+}
+
+async function getBookByNumericPublicId(publicId, client = prisma) {
+  const normalized = String(publicId || "").trim();
+  const book = await client.book.findUnique({
+    where: { id: Number.parseInt(normalized, 10) },
+  });
+  if (!book) {
+    throw new HttpError(404, "图书不存在");
+  }
+  return book;
+}
+
+async function loadGroupedBooksByIdentity(
+  identity,
+  client = prisma,
+  { respectPublisher = false } = {}
+) {
+  const books = await client.book.findMany({
+    where: {
+      normalizedTitle: identity.titleKey,
+    },
+    orderBy: [{ id: "asc" }],
+  });
+  const matchedBooks = books.filter((book) =>
+    matchesGroupIdentity(book, identity, { respectPublisher })
+  );
+  if (matchedBooks.length === 0) {
+    throw new HttpError(404, "图书不存在");
+  }
+
+  return matchedBooks;
+}
+
+async function resolveGroupedBooksByPublicId(publicId, client = prisma) {
+  const normalized = String(publicId || "").trim();
+  const decoded = decodeGroupId(normalized);
+  if (decoded.type === "public") {
+    if (decoded.identity) {
+      return loadGroupedBooksByIdentity(decoded.identity, client, {
+        respectPublisher: shouldRespectPublisherForPublicGrouping(decoded.identity),
+      });
+    }
+
+    const anchorBook = await client.book.findUnique({
+      where: { id: decoded.anchorBookId },
+    });
+    if (anchorBook) {
+      const identity = getBookGroupIdentity(anchorBook);
+      return loadGroupedBooksByIdentity(identity, client, {
+        respectPublisher: shouldRespectPublisherForPublicGrouping(identity),
+      });
+    }
+    throw new HttpError(404, "图书不存在");
+  }
+
+  return loadGroupedBooksByIdentity(decoded.identity, client, {
+    respectPublisher: Boolean(decoded.identity?.publisherKey),
+  });
+}
+
+async function resolveReviewTargetByPublicId(publicId, client = prisma) {
+  const normalized = String(publicId || "").trim();
+  if (isNumericPublicId(normalized)) {
+    const book = await getBookByNumericPublicId(normalized, client);
+    const books = await loadGroupedBooksByIdentity(getBookGroupIdentity(book), client);
+    return { targetBook: book, books };
+  }
+
+  const books = await resolveGroupedBooksByPublicId(normalized, client);
+  return {
+    targetBook: books[0],
+    books,
+  };
+}
+
+function getBookGroupIdentity(book) {
+  return buildGroupIdentity(book);
+}
+
+function getBookPublicGroupCacheKey(book) {
+  const identity = getBookGroupIdentity(book);
+  const publisherKey = shouldRespectPublisherForPublicGrouping(identity)
+    ? identity.publisherKey
+    : "";
+  return `${identity.titleKey}\u0000${identity.authorKey}\u0000${identity.subtitleKey}\u0000${publisherKey}`;
+}
+
+function aggregateBookGroup(books) {
+  if (!Array.isArray(books) || books.length === 0) {
+    throw new HttpError(404, "图书不存在");
+  }
+
+  const sortedBooks = [...books].sort((left, right) => left.id - right.id);
+  const representative = sortedBooks[0];
+  const identity = getBookGroupIdentity(representative);
+  const barcodes = [...new Set(sortedBooks.map((book) => book.barcode).filter(Boolean))];
+  const authors = [...new Set(sortedBooks.map((book) => book.author).filter(Boolean))];
+  const publishers = [...new Set(sortedBooks.map((book) => book.publisher).filter(Boolean))];
+  const publishDateTexts = [
+    ...new Set(sortedBooks.map((book) => book.publishDateText).filter(Boolean)),
+  ];
+
+  return {
+    id: encodePublicGroupId(representative.id, identity),
+    title: representative.title,
+    author: getFirstAuthorDisplay(representative.author) || representative.author,
+    publishPlace:
+      sortedBooks.find((book) => book.publishPlace)?.publishPlace || representative.publishPlace,
+    publisher: publishers[0] || representative.publisher,
+    publishDateText:
+      publishDateTexts[0] || representative.publishDateText,
+    subtitle:
+      mergeSubtitleParts(...sortedBooks.map((book) => book.subtitle).filter(Boolean)) ||
+      representative.subtitle,
+    barcode: representative.barcode,
+    barcodes,
+    authors,
+    publishers,
+    publishDateTexts,
+    totalCopies: sortedBooks.reduce((sum, book) => sum + (book.totalCopies || 0), 0),
+    availableCopies: sortedBooks.reduce((sum, book) => sum + (book.availableCopies || 0), 0),
+    groupBookIds: sortedBooks.map((book) => book.id),
+    groupBookCount: sortedBooks.length,
+  };
+}
+
 function serializeBookSummary(book) {
   return {
     id: book.id,
@@ -331,6 +621,37 @@ function serializeBookSummary(book) {
     publishDateText: book.publishDateText,
     barcode: book.barcode,
     subtitle: book.subtitle,
+  };
+}
+
+function serializeAggregatedBook(group) {
+  return {
+    id: group.id,
+    title: group.title,
+    author: group.author,
+    publishPlace: group.publishPlace,
+    publisher: group.publisher,
+    publishDateText: group.publishDateText,
+    authors: group.authors,
+    publishers: group.publishers,
+    publishDateTexts: group.publishDateTexts,
+    subtitle: group.subtitle,
+    barcode: group.barcode,
+    barcodes: group.barcodes,
+    totalCopies: group.totalCopies,
+    groupBookCount: group.groupBookCount,
+  };
+}
+
+function serializeSinglePublicBook(book) {
+  return {
+    ...serializeBookSummary(book),
+    authors: book.author ? [book.author] : [],
+    publishers: book.publisher ? [book.publisher] : [],
+    publishDateTexts: book.publishDateText ? [book.publishDateText] : [],
+    barcodes: book.barcode ? [book.barcode] : [],
+    totalCopies: book.totalCopies,
+    groupBookCount: 1,
   };
 }
 
@@ -358,6 +679,7 @@ function serializeReviewForAdmin(review) {
           subtitle: review.book.subtitle,
         }
       : null,
+    groupedBook: review.groupedBook || null,
   };
 }
 
@@ -423,6 +745,95 @@ function scoreBook(normalizedQuery, normalizedTitle) {
   return 4000 - distance * 100 - Math.abs(normalizedTitle.length - normalizedQuery.length);
 }
 
+function compareSearchEntries(left, right, normalizedQuery) {
+  if (right.score !== left.score) return right.score - left.score;
+  return Math.abs(left.book.normalizedTitle.length - normalizedQuery.length) -
+    Math.abs(right.book.normalizedTitle.length - normalizedQuery.length);
+}
+
+async function collectMatchedSearchGroups(where, normalizedQuery) {
+  const grouped = new Map();
+  let skip = 0;
+
+  while (grouped.size < SEARCH_CANDIDATE_LIMIT) {
+    const books = await prisma.book.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      skip,
+      take: SEARCH_BATCH_SIZE,
+    });
+
+    if (books.length === 0) break;
+    skip += books.length;
+
+    books
+      .map((book) => ({
+        book,
+        score: scoreBook(normalizedQuery, book.normalizedTitle),
+      }))
+      .filter((entry) => Number.isFinite(entry.score))
+      .sort((left, right) => compareSearchEntries(left, right, normalizedQuery))
+      .forEach((entry) => {
+        const cacheKey = getBookPublicGroupCacheKey(entry.book);
+        const current = grouped.get(cacheKey);
+        if (!current) {
+          grouped.set(cacheKey, {
+            cacheKey,
+            identity: getBookGroupIdentity(entry.book),
+            book: entry.book,
+            score: entry.score,
+          });
+          return;
+        }
+
+        if (entry.score > current.score) {
+          current.score = entry.score;
+          current.book = entry.book;
+          current.identity = getBookGroupIdentity(entry.book);
+        }
+      });
+  }
+
+  return [...grouped.values()];
+}
+
+async function loadCompleteGroups(groupEntries) {
+  if (!Array.isArray(groupEntries) || groupEntries.length === 0) {
+    return [];
+  }
+
+  const titleKeys = [...new Set(groupEntries.map((entry) => entry.identity.titleKey).filter(Boolean))];
+  const candidateKeys = new Set(groupEntries.map((entry) => entry.cacheKey));
+  const books = await prisma.book.findMany({
+    where: {
+      normalizedTitle: { in: titleKeys },
+    },
+    orderBy: [{ id: "asc" }],
+  });
+
+  const groupedBooks = new Map();
+  for (const book of books) {
+    const cacheKey = getBookPublicGroupCacheKey(book);
+    if (!candidateKeys.has(cacheKey)) continue;
+    const current = groupedBooks.get(cacheKey) || [];
+    current.push(book);
+    groupedBooks.set(cacheKey, current);
+  }
+
+  return groupEntries
+    .map((entry) => ({
+      score: entry.score,
+      group: aggregateBookGroup(groupedBooks.get(entry.cacheKey) || [entry.book]),
+    }))
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      if (right.group.totalCopies !== left.group.totalCopies) {
+        return right.group.totalCopies - left.group.totalCopies;
+      }
+      return left.group.publisher.localeCompare(right.group.publisher, "zh-CN");
+    });
+}
+
 async function searchBooks(query) {
   const trimmedQuery = String(query || "").trim();
   const normalizedQuery = normalizeTitle(query);
@@ -441,63 +852,51 @@ async function searchBooks(query) {
     ],
   };
 
-  let books = await prisma.book.findMany({
-    where: primaryWhere,
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-    take: SEARCH_CANDIDATE_LIMIT,
-  });
+  let matchedGroups = await collectMatchedSearchGroups(primaryWhere, normalizedQuery);
 
-  if (books.length === 0) {
+  if (matchedGroups.length === 0) {
     const relaxedNeedle = normalizedQuery.slice(0, Math.max(1, Math.floor(normalizedQuery.length / 2)));
-    books = await prisma.book.findMany({
-      where: {
+    matchedGroups = await collectMatchedSearchGroups(
+      {
         normalizedTitle: {
           contains: relaxedNeedle,
         },
       },
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      take: SEARCH_CANDIDATE_LIMIT,
-    });
+      normalizedQuery
+    );
   }
 
-  return books
-    .map((book) => ({
-      book,
-      score: scoreBook(normalizedQuery, book.normalizedTitle),
-    }))
-    .filter((entry) => Number.isFinite(entry.score))
-    .sort((left, right) => {
-      if (right.score !== left.score) return right.score - left.score;
-      return Math.abs(left.book.normalizedTitle.length - normalizedQuery.length) -
-        Math.abs(right.book.normalizedTitle.length - normalizedQuery.length);
-    })
-    .map((entry) => serializeBookSummary(entry.book));
+  return (await loadCompleteGroups(matchedGroups)).map((entry) => serializeAggregatedBook(entry.group));
 }
 
 async function getBookById(id) {
-  const bookId = parsePositiveIntId(id, "图书");
-  const book = await prisma.book.findUnique({
-    where: { id: bookId },
-  });
-  if (!book) {
-    throw new HttpError(404, "图书不存在");
+  if (isNumericPublicId(id)) {
+    return serializeSinglePublicBook(await getBookByNumericPublicId(id));
   }
-  return serializeBookSummary(book);
+
+  const books = await resolveGroupedBooksByPublicId(id);
+  return serializeAggregatedBook(aggregateBookGroup(books));
 }
 
 async function listApprovedReviews(bookId) {
-  const normalizedBookId = parsePositiveIntId(bookId, "图书");
-  const book = await prisma.book.findUnique({
-    where: { id: normalizedBookId },
-    select: { id: true },
-  });
-  if (!book) {
-    throw new HttpError(404, "图书不存在");
+  if (isNumericPublicId(bookId)) {
+    const book = await getBookByNumericPublicId(bookId);
+    const reviews = await prisma.bookReview.findMany({
+      where: {
+        bookId: book.id,
+        status: "approved",
+      },
+      orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
+    });
+
+    return reviews.map(serializeReviewForPublic);
   }
+
+  const books = await resolveGroupedBooksByPublicId(bookId);
 
   const reviews = await prisma.bookReview.findMany({
     where: {
-      bookId: normalizedBookId,
+      bookId: { in: books.map((book) => book.id) },
       status: "approved",
     },
     orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
@@ -507,17 +906,11 @@ async function listApprovedReviews(bookId) {
 }
 
 async function createReview(bookId, { displayName, content }) {
-  const normalizedBookId = parsePositiveIntId(bookId, "图书");
-  const book = await prisma.book.findUnique({
-    where: { id: normalizedBookId },
-  });
-  if (!book) {
-    throw new HttpError(404, "图书不存在");
-  }
+  const { targetBook } = await resolveReviewTargetByPublicId(bookId);
 
   const review = await prisma.bookReview.create({
     data: {
-      bookId: book.id,
+      bookId: targetBook.id,
       displayName,
       originalContent: content,
       finalContent: content,
@@ -532,11 +925,12 @@ async function createReview(bookId, { displayName, content }) {
 }
 
 async function importCatalogFromCsv(buffer, { fileName, catalogName, importMode, adminUserId }) {
+  const normalizedFileName = decodeUploadFilename(fileName);
   const rows = parseCatalogFile(buffer, fileName);
 
   const batch = await prisma.importBatch.create({
     data: {
-      fileName,
+      fileName: normalizedFileName,
       catalogName,
       importMode,
       status: "processing",
@@ -649,7 +1043,7 @@ async function listImportBatches() {
 
   return batches.map((batch) => ({
     id: batch.id,
-    fileName: batch.fileName,
+    fileName: decodeUploadFilename(batch.fileName),
     catalogName: batch.catalogName,
     importMode: batch.importMode,
     status: batch.status,
@@ -670,7 +1064,7 @@ async function getImportBatchById(id) {
 
   return {
     id: batch.id,
-    fileName: batch.fileName,
+    fileName: decodeUploadFilename(batch.fileName),
     catalogName: batch.catalogName,
     importMode: batch.importMode,
     status: batch.status,
@@ -743,12 +1137,69 @@ async function deleteImportBatch(id) {
 
   const books = await prisma.book.findMany({
     where: { sourceImportBatchId: batchId },
-    select: { id: true },
   });
   const bookIds = books.map((book) => book.id);
 
   await prisma.$transaction(async (tx) => {
     if (bookIds.length > 0) {
+      const deletingBookIds = new Set(bookIds);
+      const targetIdsByPublicGroupCacheKey = new Map();
+      const reviewSourceIdsByTargetId = new Map();
+
+      for (const book of books) {
+        const publicGroupCacheKey = getBookPublicGroupCacheKey(book);
+        let targetBookId;
+        let groupedBooks;
+
+        if (targetIdsByPublicGroupCacheKey.has(publicGroupCacheKey)) {
+          targetBookId = targetIdsByPublicGroupCacheKey.get(publicGroupCacheKey);
+        } else {
+          groupedBooks = await loadGroupedBooksByIdentity(
+            getBookGroupIdentity(book),
+            tx,
+            {
+              respectPublisher: shouldRespectPublisherForPublicGrouping(
+                getBookGroupIdentity(book)
+              ),
+            }
+          );
+          targetBookId =
+            groupedBooks.find((candidate) => !deletingBookIds.has(candidate.id))?.id || null;
+          targetIdsByPublicGroupCacheKey.set(publicGroupCacheKey, targetBookId);
+        }
+
+        if (!groupedBooks) {
+          groupedBooks = await loadGroupedBooksByIdentity(
+            getBookGroupIdentity(book),
+            tx,
+            {
+              respectPublisher: shouldRespectPublisherForPublicGrouping(
+                getBookGroupIdentity(book)
+              ),
+            }
+          );
+        }
+
+        const representativeBookId = groupedBooks[0]?.id;
+        if (book.id !== representativeBookId) continue;
+        if (!targetBookId) continue;
+
+        const sourceIds = reviewSourceIdsByTargetId.get(targetBookId) || [];
+        sourceIds.push(book.id);
+        reviewSourceIdsByTargetId.set(targetBookId, sourceIds);
+      }
+
+      for (const [targetBookId, sourceBookIds] of reviewSourceIdsByTargetId.entries()) {
+        await tx.bookReview.updateMany({
+          where: {
+            bookId: { in: sourceBookIds },
+          },
+          data: {
+            bookId: targetBookId,
+          },
+        });
+      }
+
       await tx.book.deleteMany({
         where: { id: { in: bookIds } },
       });
@@ -796,6 +1247,33 @@ async function listAdminReviews({ status, bookId }) {
     include: { book: true },
     orderBy: [{ createdAt: "desc" }],
   });
+
+  const groupCache = new Map();
+
+  for (const review of reviews) {
+    if (!review.book) continue;
+    const cacheKey = getBookPublicGroupCacheKey(review.book);
+    if (!groupCache.has(cacheKey)) {
+      const groupedBooks = await prisma.book.findMany({
+        where: {
+          normalizedTitle: normalizeTitle(review.book.title),
+        },
+        orderBy: [{ id: "asc" }],
+      });
+      const aggregated = aggregateBookGroup(
+        groupedBooks.filter((book) => getBookPublicGroupCacheKey(book) === cacheKey)
+      );
+      groupCache.set(cacheKey, {
+        id: aggregated.id,
+        title: aggregated.title,
+        author: aggregated.author,
+        publisher: aggregated.publisher,
+        barcodes: aggregated.barcodes,
+        groupBookCount: aggregated.groupBookCount,
+      });
+    }
+    review.groupedBook = groupCache.get(cacheKey);
+  }
 
   return reviews.map(serializeReviewForAdmin);
 }
@@ -874,4 +1352,5 @@ module.exports = {
   updateBook,
   listAdminReviews,
   updateReview,
+  decodeUploadFilename,
 };

@@ -558,6 +558,11 @@ function BooksPage({ token, onLogout }) {
                 <option value="create_only">只新增</option>
                 <option value="upsert">新增或更新</option>
               </SelectInput>
+              <p className="mt-2 text-xs leading-6 text-stone-500">
+                {importForm.importMode === "create_only"
+                  ? "只新增：若 book_id 已存在，该行会失败，不覆盖旧数据。"
+                  : "新增或更新：若 book_id 已存在，会用新文件中的数据覆盖旧记录。"}
+              </p>
             </Field>
             <Field
               label="导入文件"
@@ -992,10 +997,23 @@ function ReviewsPage({ token, onLogout }) {
                   className="rounded-[1.8rem] border border-stone-200 bg-white/85 p-5"
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="font-semibold text-stone-900">{review.book?.title}</span>
+                    <span className="font-semibold text-stone-900">{review.book?.title || "图书已删除"}</span>
                     <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
                     <Badge tone="muted">{review.displayName}</Badge>
                   </div>
+                  {review.book ? (
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
+                      <span>作者：{review.book.author || "暂无"}</span>
+                      <span>出版社：{review.book.publisher || "暂无"}</span>
+                      <span>条形码：{review.book.barcode || "暂无"}</span>
+                    </div>
+                  ) : null}
+                  {review.groupedBook && review.groupedBook.groupBookCount > 1 ? (
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-stone-500">
+                      <span>所在分组：共 {review.groupedBook.groupBookCount} 个副本</span>
+                      <span>分组条形码：{review.groupedBook.barcodes?.length || 0} 个</span>
+                    </div>
+                  ) : null}
                   <p className="mt-3 text-sm leading-7 text-stone-500">
                     原文：{review.originalContent}
                   </p>

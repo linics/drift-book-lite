@@ -228,6 +228,12 @@ function BookCard({ book }) {
       {book.subtitle ? (
         <p className="mt-2 text-sm leading-7 text-stone-600">副标题：{book.subtitle}</p>
       ) : null}
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Badge tone="success">馆藏 {book.totalCopies} 册</Badge>
+        {book.groupBookCount > 1 ? (
+          <Badge tone="muted">合并副本 {book.groupBookCount}</Badge>
+        ) : null}
+      </div>
     </Link>
   );
 }
@@ -638,6 +644,18 @@ function BookDetailPage() {
     );
   }
 
+  const detailFields = [
+    ["作者", book.authors?.length ? book.authors.join(" / ") : book.author],
+    ["出版地", book.publishPlace],
+    ["出版社", book.publishers?.length ? book.publishers.join(" / ") : book.publisher],
+    [
+      "出版日期",
+      book.publishDateTexts?.length ? book.publishDateTexts.join(" / ") : book.publishDateText,
+    ],
+    ["馆藏总册数", `${book.totalCopies} 册`],
+    ["副标题", book.subtitle],
+  ];
+
   return (
     <PublicShell assets={assets}>
       <main className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
@@ -646,14 +664,7 @@ function BookDetailPage() {
             {book.title}
           </h1>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {[
-              ["作者", book.author],
-              ["出版地", book.publishPlace],
-              ["出版社", book.publisher],
-              ["出版日期", book.publishDateText],
-              ["条形码", book.barcode],
-              ["副标题", book.subtitle],
-            ].map(([label, value]) => (
+            {detailFields.map(([label, value]) => (
               value ? (
                 <div key={label} className="rounded-[1.8rem] border border-stone-200 bg-[#faf6ef] p-5">
                   <p className="text-xs uppercase tracking-[0.28em] text-stone-500">{label}</p>
@@ -661,6 +672,20 @@ function BookDetailPage() {
                 </div>
               ) : null
             ))}
+          </div>
+          <div className="mt-6 rounded-[1.8rem] border border-stone-200 bg-[#faf6ef] p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-stone-500">条形码列表</p>
+            {book.barcodes?.length ? (
+              <div className="mt-3 flex flex-wrap gap-3">
+                {book.barcodes.map((barcode) => (
+                  <Badge key={barcode} tone="muted">
+                    {barcode}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-stone-500">暂无条形码信息</p>
+            )}
           </div>
           <div className="mt-8 flex gap-3">
             <Link to="/">

@@ -14,6 +14,7 @@ const {
   updateBook,
   listAdminReviews,
   updateReview,
+  decodeUploadFilename,
 } = require("../services/library");
 const {
   getSiteAsset,
@@ -108,7 +109,7 @@ router.post("/imports", uploadMemory.single("file"), async (req, res) => {
   }
   const payload = importSchema.parse(req.body);
   const batch = await importCatalogFromCsv(req.file.buffer, {
-    fileName: req.file.originalname,
+    fileName: decodeUploadFilename(req.file.originalname),
     catalogName: payload.catalogName,
     importMode: payload.importMode,
     adminUserId: req.adminUser.sub,
