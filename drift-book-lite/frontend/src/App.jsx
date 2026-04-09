@@ -47,6 +47,15 @@ function sortCarousel(images = []) {
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
+function lineClampStyle(lines) {
+  return {
+    display: "-webkit-box",
+    WebkitLineClamp: lines,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  };
+}
+
 function LoadingPane({ label = "正在加载" }) {
   return (
     <div className="flex min-h-[40vh] items-center justify-center px-6">
@@ -329,6 +338,7 @@ function HomePage() {
   const { assets, error } = useSiteAssets();
   const { data: homepage, error: homepageError } = useHomepageData();
   const [activeIndex, setActiveIndex] = useState(0);
+  const rankingPreviewLimit = 3;
 
   const slides = useMemo(
     () => sortCarousel(assets?.carouselImages || []),
@@ -360,85 +370,51 @@ function HomePage() {
   }
 
   const activeSlide = slides[activeIndex];
+  const activityPreview = (homepage.activityBooks || []).slice(0, rankingPreviewLimit);
+  const featuredPreview = (homepage.featuredReviews || []).slice(0, rankingPreviewLimit);
 
   return (
     <PublicShell assets={assets}>
-      <main className="grid flex-1 gap-8 xl:grid-cols-[0.78fr_1.32fr_0.9fr]">
-        <section className="space-y-5">
-          <div className="rounded-[2.2rem] border border-stone-200/80 bg-white/80 p-6 shadow-[0_22px_70px_rgba(47,33,15,0.08)]">
-            <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Activity Rank</p>
-            <h2 className="mt-3 font-display text-3xl text-stone-900">留言量排行榜</h2>
-            <p className="mt-3 text-sm leading-7 text-stone-600">
-              仅统计已审核公开的接龙层数，点击即可进入对应书页继续阅读。
-            </p>
-            <div className="mt-6 space-y-3">
-              {(homepage.activityBooks || []).length === 0 ? (
-                <div className="rounded-[1.6rem] border border-dashed border-stone-300 bg-[#faf6ef] p-4 text-sm leading-7 text-stone-500">
-                  当前还没有公开接龙，欢迎成为第一位留言的读者。
-                </div>
-              ) : (
-                homepage.activityBooks.map((book, index) => (
-                  <Link
-                    key={book.id}
-                    to={`/books/${book.id}`}
-                    className="block rounded-[1.6rem] border border-stone-200 bg-[#faf6ef] p-4 transition hover:border-[#8b2f2a]/35 hover:bg-white"
+      <main className="flex flex-1 flex-col gap-10">
+        <section
+          data-testid="homepage-hero"
+          className="grid gap-6 xl:min-h-[38rem] xl:grid-cols-[0.92fr_1.08fr]"
+        >
+          <section className="paper-panel relative flex h-full flex-col overflow-hidden rounded-[2.8rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-12">
+            <div className="absolute left-0 top-0 h-52 w-52 rounded-full bg-[#8b2f2a]/10 blur-3xl" />
+            <div className="relative z-10 flex h-full flex-col">
+              <Badge tone="accent">馆内阅读活动</Badge>
+              <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.05] text-stone-900 md:text-7xl">
+                一条接龙，
+                <span className="text-[#8b2f2a]"> 把一本到下一位读者手里。</span>
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-stone-600 md:text-lg">
+                搜索一本书，进入它的专属接龙页。每位同学都能在审核后留下自己的那一层阅读回声。
+              </p>
+
+              <SearchForm
+                onSubmit={(value) => value && navigate(`/search?q=${encodeURIComponent(value)}`)}
+              />
+
+              <div className="mt-6 flex flex-wrap gap-3 text-xs uppercase tracking-[0.24em] text-stone-500">
+                {["馆内统一入口", "每本书一条接龙", "审核通过后公开"].map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-stone-200/80 bg-white/72 px-3 py-2"
                   >
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
-                          No.{String(index + 1).padStart(2, "0")}
-                        </p>
-                        <h3 className="mt-2 text-base font-semibold text-stone-900">
-                          {book.title}
-                        </h3>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-display text-3xl text-[#8b2f2a]">
-                          {book.messageCount}
-                        </div>
-                        <p className="text-xs text-stone-500">层留言</p>
-                      </div>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        </section>
+                    {item}
+                  </span>
+                ))}
+              </div>
 
-        <section className="space-y-8">
-          <section className="paper-panel relative overflow-hidden rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-12">
-            <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-[#8b2f2a]/10 blur-3xl" />
-            <Badge tone="accent">馆内阅读活动</Badge>
-            <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.05] text-stone-900 md:text-7xl">
-              一条接龙，
-              <span className="text-[#8b2f2a]"> 把一本到下一位读者手里。</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-8 text-stone-600 md:text-lg">
-              搜索一本书，进入它的专属接龙页。每位同学都能在审核后留下自己的那一层阅读回声。
-            </p>
-
-            <SearchForm
-              onSubmit={(value) => value && navigate(`/search?q=${encodeURIComponent(value)}`)}
-            />
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              {[
-                ["实名校验", "更稳妥", "每次留言都要重新核验学号、姓名和身份证后四位。"],
-                ["单链接龙", "更清晰", "每本书只有一条持续延伸的阅读链，不做分叉讨论。"],
-                ["精选摘录", "更聚焦", "管理员会把有代表性的留言放到首页，帮助更多人进入好书。"],
-              ].map(([value, title, desc]) => (
-                <div key={title} className="rounded-[1.8rem] border border-stone-200/80 bg-white/75 p-5">
-                  <div className="font-display text-2xl text-stone-900">{value}</div>
-                  <div className="mt-2 text-sm font-semibold text-stone-800">{title}</div>
-                  <p className="mt-2 text-sm leading-6 text-stone-600">{desc}</p>
-                </div>
-              ))}
+              <p className="mt-auto pt-10 text-sm leading-7 text-stone-500">
+                先从搜索开始，再沿着已经公开的接龙，找到你想接上的那一本书。
+              </p>
             </div>
           </section>
 
-          <section className="relative flex min-h-[28rem] flex-col overflow-hidden rounded-[2.4rem] border border-white/60 bg-stone-900 shadow-[0_30px_100px_rgba(23,17,8,0.35)]">
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,16,9,0.1),rgba(22,16,9,0.8))]" />
+          <section className="relative flex min-h-[24rem] flex-col overflow-hidden rounded-[2.8rem] border border-white/60 bg-stone-900 shadow-[0_30px_100px_rgba(23,17,8,0.35)] xl:min-h-full">
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,16,9,0.08),rgba(22,16,9,0.78))]" />
             <AnimatePresence mode="wait">
               {activeSlide ? (
                 <MotionImage
@@ -462,13 +438,13 @@ function HomePage() {
             </AnimatePresence>
             <div className="relative z-10 mt-auto p-8 text-white md:p-10">
               <Badge tone="warning">校园轮播</Badge>
-              <h2 className="mt-4 font-display text-4xl leading-tight md:text-5xl">
-                每一层接龙，都是下一位读者的入场券。
+              <h2 className="mt-4 max-w-2xl font-display text-4xl leading-tight md:text-5xl">
+                阅读不是停在书页里，而是继续流向下一个人。
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-stone-200">
                 从图书馆七楼出发，在同一本书下留下连续的阅读痕迹，让阅读真正流动起来。
               </p>
-              <div className="mt-8 flex gap-3">
+              <div className="mt-8 flex items-center gap-3">
                 {slides.map((slide, index) => (
                   <button
                     key={slide.id}
@@ -481,29 +457,92 @@ function HomePage() {
                     aria-label={`切换到 ${slide.label}`}
                   />
                 ))}
+                {activeSlide?.label ? (
+                  <span className="ml-2 text-xs uppercase tracking-[0.24em] text-white/72">
+                    {activeSlide.label}
+                  </span>
+                ) : null}
               </div>
             </div>
           </section>
         </section>
 
-        <section className="space-y-5">
-          <div className="rounded-[2.2rem] border border-stone-200/80 bg-white/80 p-6 shadow-[0_22px_70px_rgba(47,33,15,0.08)]">
-            <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Featured Lines</p>
-            <h2 className="mt-3 font-display text-3xl text-stone-900">管理员精选留言</h2>
-            <p className="mt-3 text-sm leading-7 text-stone-600">
-              选取已经公开的接龙片段，点击后直接跳到对应图书与层级。
-            </p>
-            <div className="mt-6 space-y-3">
-              {(homepage.featuredReviews || []).length === 0 ? (
+        <section
+          data-testid="homepage-rankings"
+          className="grid gap-6 lg:grid-cols-2"
+        >
+          <div className="rounded-[2.3rem] border border-stone-200/80 bg-white/72 p-6 shadow-[0_22px_70px_rgba(47,33,15,0.08)] md:p-7">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Activity Rank</p>
+                <h2 className="mt-3 font-display text-3xl text-stone-900">留言量排行榜</h2>
+                <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600">
+                  只做轻量预览，帮助你快速找到当前最活跃的接龙书页。
+                </p>
+              </div>
+              <span className="rounded-full bg-[#8b2f2a]/8 px-3 py-2 text-xs uppercase tracking-[0.24em] text-[#8b2f2a]">
+                首页预览 {activityPreview.length} 条
+              </span>
+            </div>
+            <div data-testid="activity-ranking-list" className="mt-6 space-y-3">
+              {activityPreview.length === 0 ? (
                 <div className="rounded-[1.6rem] border border-dashed border-stone-300 bg-[#faf6ef] p-4 text-sm leading-7 text-stone-500">
+                  当前还没有公开接龙，欢迎成为第一位留言的读者。
+                </div>
+              ) : (
+                activityPreview.map((book, index) => (
+                  <Link
+                    key={book.id}
+                    to={`/books/${book.id}`}
+                    className="group flex items-center justify-between gap-4 rounded-[1.6rem] border border-stone-200 bg-[#faf6ef] px-4 py-4 transition hover:border-[#8b2f2a]/35 hover:bg-white"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-white text-sm font-semibold text-[#8b2f2a] shadow-[0_10px_30px_rgba(47,33,15,0.06)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+                          热门接龙书页
+                        </p>
+                        <h3 className="mt-1 text-base font-semibold text-stone-900 transition group-hover:text-[#8b2f2a]">
+                          {book.title}
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-display text-3xl text-[#8b2f2a]">{book.messageCount}</div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-stone-500">层留言</p>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[2.3rem] border border-stone-200/80 bg-[#fffaf1]/85 p-6 shadow-[0_22px_70px_rgba(47,33,15,0.08)] md:p-7">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Featured Lines</p>
+                <h2 className="mt-3 font-display text-3xl text-stone-900">管理员精选留言</h2>
+                <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600">
+                  先读几段有代表性的接龙片段，再决定从哪本书进入。
+                </p>
+              </div>
+              <span className="rounded-full bg-stone-900/6 px-3 py-2 text-xs uppercase tracking-[0.24em] text-stone-600">
+                首页预览 {featuredPreview.length} 条
+              </span>
+            </div>
+            <div data-testid="featured-ranking-list" className="mt-6 space-y-3">
+              {featuredPreview.length === 0 ? (
+                <div className="rounded-[1.6rem] border border-dashed border-stone-300 bg-white/70 p-4 text-sm leading-7 text-stone-500">
                   还没有精选留言，管理员审核后会逐步补充。
                 </div>
               ) : (
-                homepage.featuredReviews.map((review, index) => (
+                featuredPreview.map((review, index) => (
                   <Link
                     key={review.id}
                     to={`/books/${review.bookId}#review-${review.id}`}
-                    className="block rounded-[1.6rem] border border-stone-200 bg-[#faf6ef] p-4 transition hover:border-[#8b2f2a]/35 hover:bg-white"
+                    className="group block rounded-[1.6rem] border border-stone-200 bg-white/80 p-4 transition hover:border-[#8b2f2a]/35 hover:bg-white"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <Badge tone="accent">精选 {String(index + 1).padStart(2, "0")}</Badge>
@@ -511,44 +550,52 @@ function HomePage() {
                         <Badge tone="muted">第 {review.sequenceNumber} 层</Badge>
                       ) : null}
                     </div>
-                    <h3 className="mt-4 text-base font-semibold text-stone-900">
+                    <h3 className="mt-4 text-base font-semibold text-stone-900 transition group-hover:text-[#8b2f2a]">
                       {review.bookTitle}
                     </h3>
-                    <p className="mt-3 max-h-[11rem] overflow-hidden text-sm leading-7 text-stone-700">
+                    <p
+                      className="mt-3 text-sm leading-7 text-stone-700"
+                      style={lineClampStyle(3)}
+                    >
                       {review.content}
                     </p>
-                    <p className="mt-3 text-xs text-stone-500">{review.displayName}</p>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-stone-500">
+                      {review.displayName}
+                    </p>
                   </Link>
                 ))
               )}
             </div>
           </div>
         </section>
-      </main>
 
-      <section className="mt-10 grid gap-6 rounded-[2.4rem] border border-stone-200/70 bg-white/75 p-8 shadow-[0_20px_60px_rgba(58,39,18,0.08)] md:grid-cols-[0.8fr_1.2fr] md:p-10">
-        <SectionHeading
-          eyebrow="How It Works"
-          title="如何加入这一条接龙？"
-          description="流程被刻意压得很短，但每一步都更明确：先找书，再实名核验，最后把你的那一层接上去。"
-        />
-        <div className="grid gap-4">
-          {(assets.processContent || []).map((step, index) => (
-            <div
-              key={step.id}
-              className="flex gap-4 rounded-[1.8rem] border border-stone-200 bg-[#faf6ef] p-5"
-            >
-              <div className="font-display text-3xl text-[#8b2f2a]">
-                {String(index + 1).padStart(2, "0")}
+        <section
+          data-testid="homepage-process"
+          className="grid gap-6 rounded-[2.4rem] border border-stone-200/70 bg-white/75 p-8 shadow-[0_20px_60px_rgba(58,39,18,0.08)] md:grid-cols-[0.8fr_1.2fr] md:p-10"
+        >
+          <SectionHeading
+            eyebrow="How It Works"
+            title="如何加入这一条接龙？"
+            description="流程被刻意压得很短，但每一步都更明确：先找书，再实名核验，最后把你的那一层接上去。"
+          />
+          <div className="grid gap-4">
+            {(assets.processContent || []).map((step, index) => (
+              <div
+                key={step.id}
+                className="flex gap-4 rounded-[1.8rem] border border-stone-200 bg-[#faf6ef] p-5"
+              >
+                <div className="font-display text-3xl text-[#8b2f2a]">
+                  {String(index + 1).padStart(2, "0")}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-stone-900">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-stone-600">{step.description}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-stone-900">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-600">{step.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </main>
     </PublicShell>
   );
 }
