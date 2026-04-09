@@ -216,7 +216,9 @@ function useAdminSession() {
 function AdminLayout({ title, description, onLogout, children }) {
   const links = [
     { to: "/books", label: "图书与导入" },
-    { to: "/reviews", label: "评语审核" },
+    { to: "/reviews", label: "留言审核" },
+    { to: "/featured", label: "精选运营" },
+    { to: "/sensitive-words", label: "敏感词库" },
     { to: "/assets", label: "站点素材" },
   ];
 
@@ -294,7 +296,7 @@ function AdminLoginPage() {
   const navigate = useNavigate();
   const { token, setToken } = useAdminSession();
   const [formState, setFormState] = useState({
-    username: "admin",
+    username: "admin1",
     password: "change-this-password",
   });
   const [error, setError] = useState("");
@@ -860,7 +862,6 @@ function ReviewsPage({ token, onLogout }) {
             review.id,
             {
               finalContent: review.finalContent,
-              rejectionReason: review.rejectionReason || "",
             },
           ])
         )
@@ -885,47 +886,7 @@ function ReviewsPage({ token, onLogout }) {
     if (reviewStatus === "hidden") {
       return { tone: "muted", label: "已下架" };
     }
-    if (reviewStatus === "rejected") {
-      return { tone: "danger", label: "已驳回" };
-    }
     return { tone: "warning", label: "待审核" };
-  }
-
-  function reviewActionMeta(reviewStatus) {
-    if (reviewStatus === "approved") {
-      return {
-        primaryAction: "approve",
-        primaryLabel: "保存修改",
-        secondaryAction: "hide",
-        secondaryLabel: "下架",
-        showRejectionReason: false,
-      };
-    }
-    if (reviewStatus === "hidden") {
-      return {
-        primaryAction: "approve",
-        primaryLabel: "重新上架",
-        secondaryAction: "hide",
-        secondaryLabel: "保存下架修改",
-        showRejectionReason: false,
-      };
-    }
-    if (reviewStatus === "rejected") {
-      return {
-        primaryAction: "approve",
-        primaryLabel: "重新通过",
-        secondaryAction: "reject",
-        secondaryLabel: "更新驳回",
-        showRejectionReason: true,
-      };
-    }
-    return {
-      primaryAction: "approve",
-      primaryLabel: "通过",
-      secondaryAction: "reject",
-      secondaryLabel: "驳回",
-      showRejectionReason: true,
-    };
   }
 
   async function handleAction(reviewId, action) {
@@ -938,7 +899,6 @@ function ReviewsPage({ token, onLogout }) {
         {
           action,
           finalContent: drafts[reviewId]?.finalContent,
-          rejectionReason: drafts[reviewId]?.rejectionReason,
         },
         {
           headers: authHeaders(token),
@@ -946,10 +906,8 @@ function ReviewsPage({ token, onLogout }) {
       );
       setSuccess(
         action === "approve"
-          ? "评语已保存并生效。"
-          : action === "hide"
-            ? "评语已下架，前台不再显示。"
-            : "评语已驳回。"
+          ? "留言已保存并公开。"
+          : "留言已隐藏，前台不再显示。"
       );
       await loadReviews(status);
     } catch (requestError) {
@@ -964,8 +922,8 @@ function ReviewsPage({ token, onLogout }) {
   return (
     <AdminLayout
       onLogout={onLogout}
-      title="评语审核"
-      description="审核学生提交的评语；已通过评语可直接改文案并生效，也可下架后仅保留后台历史。"
+      title="留言审核"
+      description="审核实名接龙留言，查看学生身份、敏感词命中情况，并决定公开或隐藏。"
     >
       <StatusMessage error={error} success={success} />
       <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
@@ -979,7 +937,6 @@ function ReviewsPage({ token, onLogout }) {
               <option value="pending">待审核</option>
               <option value="approved">已通过</option>
               <option value="hidden">已下架</option>
-              <option value="rejected">已驳回</option>
             </SelectInput>
           </Field>
         </div>
@@ -989,7 +946,6 @@ function ReviewsPage({ token, onLogout }) {
           ) : (
             reviews.map((review) => {
               const statusMeta = reviewStatusMeta(review.status);
-              const actionMeta = reviewActionMeta(review.status);
 
               return (
                 <div
@@ -997,21 +953,38 @@ function ReviewsPage({ token, onLogout }) {
                   className="rounded-[1.8rem] border border-stone-200 bg-white/85 p-5"
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="font-semibold text-stone-900">{review.book?.title || "图书已删除"}</span>
+                    <span className="font-semibold text-stone-900">
+                      {review.groupedBook?.title || review.book?.title || "图书已删除"}
+                    </span>
                     <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
-                    <Badge tone="muted">{review.displayName}</Badge>
+                    {review.sequenceNumber ? (
+                      <Badge tone="muted">第 {review.sequenceNumber} 层</Badge>
+                    ) : null}
+                    {review.isFeatured ? <Badge tone="accent">已精选</Badge> : null}
                   </div>
-                  {review.book ? (
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
-                      <span>作者：{review.book.author || "暂无"}</span>
-                      <span>出版社：{review.book.publisher || "暂无"}</span>
-                      <span>条形码：{review.book.barcode || "暂无"}</span>
-                    </div>
-                  ) : null}
-                  {review.groupedBook && review.groupedBook.groupBookCount > 1 ? (
+                  <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
+                    <span>公开显示：{review.displayName}</span>
+                    {review.studentIdentity ? (
+                      <>
+                        <span>学号：{review.studentIdentity.systemId}</span>
+                        <span>姓名：{review.studentIdentity.studentName}</span>
+                        <span>班级：{review.studentIdentity.className}</span>
+                        <span>身份证后四位：{review.studentIdentity.idCardSuffix}</span>
+                      </>
+                    ) : (
+                      <span>来源：历史旧评语</span>
+                    )}
+                  </div>
+                  {review.groupedBook ? (
                     <div className="mt-2 flex flex-wrap gap-3 text-xs text-stone-500">
                       <span>所在分组：共 {review.groupedBook.groupBookCount} 个副本</span>
-                      <span>分组条形码：{review.groupedBook.barcodes?.length || 0} 个</span>
+                      <span>作者：{review.groupedBook.author || "暂无"}</span>
+                      <span>出版社：{review.groupedBook.publisher || "暂无"}</span>
+                    </div>
+                  ) : null}
+                  {review.sensitiveHit ? (
+                    <div className="mt-3 rounded-[1.4rem] border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                      命中敏感词：{review.matchedSensitiveWords.join("、")}
                     </div>
                   ) : null}
                   <p className="mt-3 text-sm leading-7 text-stone-500">
@@ -1032,34 +1005,18 @@ function ReviewsPage({ token, onLogout }) {
                       }
                     />
                   </Field>
-                  {actionMeta.showRejectionReason ? (
-                    <Field label="驳回原因">
-                      <TextInput
-                        value={drafts[review.id]?.rejectionReason || ""}
-                        onChange={(event) =>
-                          setDrafts((current) => ({
-                            ...current,
-                            [review.id]: {
-                              ...current[review.id],
-                              rejectionReason: event.target.value,
-                            },
-                          }))
-                        }
-                      />
-                    </Field>
-                  ) : null}
                   <div className="mt-4 flex flex-wrap gap-3">
                     <PrimaryButton
                       type="button"
-                      onClick={() => handleAction(review.id, actionMeta.primaryAction)}
+                      onClick={() => handleAction(review.id, "approve")}
                     >
-                      {actionMeta.primaryLabel}
+                      {review.status === "approved" ? "保存并保持公开" : "通过并公开"}
                     </PrimaryButton>
                     <SecondaryButton
                       type="button"
-                      onClick={() => handleAction(review.id, actionMeta.secondaryAction)}
+                      onClick={() => handleAction(review.id, "hide")}
                     >
-                      {actionMeta.secondaryLabel}
+                      {review.status === "hidden" ? "更新隐藏内容" : "隐藏不公开"}
                     </SecondaryButton>
                   </div>
                 </div>
@@ -1068,6 +1025,351 @@ function ReviewsPage({ token, onLogout }) {
           )}
         </div>
       </section>
+    </AdminLayout>
+  );
+}
+
+function FeaturedReviewsPage({ token, onLogout }) {
+  const [reviews, setReviews] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function loadData() {
+    try {
+      const [approvedRes, featuredRes] = await Promise.all([
+        api.get("/admin/reviews", {
+          headers: authHeaders(token),
+          params: { status: "approved" },
+        }),
+        api.get("/admin/featured-reviews", {
+          headers: authHeaders(token),
+        }),
+      ]);
+
+      setReviews(approvedRes.data.reviews);
+      setSelectedIds(featuredRes.data.reviews.map((review) => review.id));
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "精选留言加载失败"));
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+  }, [token]);
+
+  const selectedReviews = selectedIds
+    .map((id) => reviews.find((review) => review.id === id))
+    .filter(Boolean);
+  const availableReviews = reviews.filter((review) => !selectedIds.includes(review.id));
+
+  function removeSelected(reviewId) {
+    setSelectedIds((current) => current.filter((id) => id !== reviewId));
+  }
+
+  function moveSelected(reviewId, direction) {
+    setSelectedIds((current) => {
+      const index = current.indexOf(reviewId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      await api.put(
+        "/admin/featured-reviews",
+        { reviewIds: selectedIds },
+        { headers: authHeaders(token) }
+      );
+      setSuccess("精选留言顺序已保存。");
+      await loadData();
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "精选留言保存失败"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <AdminLayout
+      onLogout={onLogout}
+      title="精选运营"
+      description="从已公开留言中挑选首页精选内容，并手动调整展示顺序。"
+    >
+      <StatusMessage error={error} success={success} />
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Selected</p>
+              <h3 className="mt-2 font-display text-3xl text-stone-900">当前精选</h3>
+            </div>
+            <PrimaryButton type="button" onClick={handleSave} disabled={saving}>
+              {saving ? "正在保存" : "保存顺序"}
+            </PrimaryButton>
+          </div>
+          <div className="mt-6 space-y-4">
+            {selectedReviews.length === 0 ? (
+              <EmptyState>当前还没有精选留言。</EmptyState>
+            ) : (
+              selectedReviews.map((review, index) => (
+                <div
+                  key={review.id}
+                  className="rounded-[1.8rem] border border-stone-200 bg-white/85 p-5"
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Badge tone="accent">精选 {index + 1}</Badge>
+                    <span className="font-semibold text-stone-900">
+                      {review.groupedBook?.title || review.book?.title}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-stone-700">{review.finalContent}</p>
+                  <p className="mt-2 text-xs text-stone-500">{review.displayName}</p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <SecondaryButton
+                      type="button"
+                      className="px-4 py-2 text-xs"
+                      onClick={() => moveSelected(review.id, -1)}
+                      disabled={index === 0}
+                    >
+                      上移
+                    </SecondaryButton>
+                    <SecondaryButton
+                      type="button"
+                      className="px-4 py-2 text-xs"
+                      onClick={() => moveSelected(review.id, 1)}
+                      disabled={index === selectedReviews.length - 1}
+                    >
+                      下移
+                    </SecondaryButton>
+                    <SecondaryButton
+                      type="button"
+                      className="px-4 py-2 text-xs"
+                      onClick={() => removeSelected(review.id)}
+                    >
+                      移出精选
+                    </SecondaryButton>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+          <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Approved</p>
+          <h3 className="mt-2 font-display text-3xl text-stone-900">可选公开留言</h3>
+          <div className="mt-6 space-y-4">
+            {availableReviews.length === 0 ? (
+              <EmptyState>没有更多可加入精选的公开留言。</EmptyState>
+            ) : (
+              availableReviews.map((review) => (
+                <div
+                  key={review.id}
+                  className="rounded-[1.8rem] border border-stone-200 bg-white/85 p-5"
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="font-semibold text-stone-900">
+                      {review.groupedBook?.title || review.book?.title}
+                    </span>
+                    {review.sequenceNumber ? (
+                      <Badge tone="muted">第 {review.sequenceNumber} 层</Badge>
+                    ) : null}
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-stone-700">{review.finalContent}</p>
+                  <p className="mt-2 text-xs text-stone-500">{review.displayName}</p>
+                  <div className="mt-4">
+                    <PrimaryButton
+                      type="button"
+                      className="px-4 py-2 text-xs"
+                      disabled={selectedIds.length >= 10}
+                      onClick={() => setSelectedIds((current) => [...current, review.id])}
+                    >
+                      加入精选
+                    </PrimaryButton>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    </AdminLayout>
+  );
+}
+
+function SensitiveWordsPage({ token, onLogout }) {
+  const [words, setWords] = useState([]);
+  const [newWord, setNewWord] = useState("");
+  const [drafts, setDrafts] = useState({});
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  async function loadWords() {
+    try {
+      const response = await api.get("/admin/sensitive-words", {
+        headers: authHeaders(token),
+      });
+      setWords(response.data.words);
+      setDrafts(
+        Object.fromEntries(response.data.words.map((word) => [word.id, word.word]))
+      );
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "敏感词库加载失败"));
+    }
+  }
+
+  useEffect(() => {
+    loadWords();
+  }, [token]);
+
+  async function handleCreate(event) {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+    try {
+      await api.post(
+        "/admin/sensitive-words",
+        { word: newWord },
+        { headers: authHeaders(token) }
+      );
+      setNewWord("");
+      setSuccess("敏感词已添加。");
+      await loadWords();
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "敏感词新增失败"));
+    }
+  }
+
+  async function handleUpdate(wordId) {
+    setError("");
+    setSuccess("");
+    try {
+      await api.patch(
+        `/admin/sensitive-words/${wordId}`,
+        { word: drafts[wordId] },
+        { headers: authHeaders(token) }
+      );
+      setSuccess("敏感词已更新。");
+      await loadWords();
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "敏感词更新失败"));
+    }
+  }
+
+  async function handleDelete(wordId) {
+    setError("");
+    setSuccess("");
+    try {
+      await api.delete(`/admin/sensitive-words/${wordId}`, {
+        headers: authHeaders(token),
+      });
+      setSuccess("敏感词已删除。");
+      await loadWords();
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "敏感词删除失败"));
+    }
+  }
+
+  return (
+    <AdminLayout
+      onLogout={onLogout}
+      title="敏感词库"
+      description="维护审核辅助词库。命中敏感词的留言仍可提交，但会在后台高亮提示。"
+    >
+      <StatusMessage error={error} success={success} />
+      <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+        <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+          <h3 className="font-display text-3xl text-stone-900">新增敏感词</h3>
+          <form className="mt-6 space-y-4" onSubmit={handleCreate}>
+            <Field label="词条">
+              <TextInput
+                value={newWord}
+                onChange={(event) => setNewWord(event.target.value)}
+                placeholder="例如：禁词"
+              />
+            </Field>
+            <PrimaryButton type="submit" disabled={!newWord.trim()}>
+              添加词条
+            </PrimaryButton>
+          </form>
+        </section>
+        <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+          <h3 className="font-display text-3xl text-stone-900">现有词库</h3>
+          <div className="mt-6 space-y-4">
+            {words.length === 0 ? (
+              <EmptyState>当前词库为空。</EmptyState>
+            ) : (
+              words.map((word) => (
+                <div
+                  key={word.id}
+                  className="rounded-[1.8rem] border border-stone-200 bg-white/85 p-5"
+                >
+                  <Field label="词条内容">
+                    <TextInput
+                      value={drafts[word.id] || ""}
+                      onChange={(event) =>
+                        setDrafts((current) => ({
+                          ...current,
+                          [word.id]: event.target.value,
+                        }))
+                      }
+                    />
+                  </Field>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <PrimaryButton
+                      type="button"
+                      className="px-4 py-2 text-xs"
+                      onClick={() => handleUpdate(word.id)}
+                    >
+                      保存修改
+                    </PrimaryButton>
+                    <SecondaryButton
+                      type="button"
+                      className="px-4 py-2 text-xs"
+                      onClick={() => handleDelete(word.id)}
+                    >
+                      删除
+                    </SecondaryButton>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
     </AdminLayout>
   );
 }
@@ -1217,6 +1519,14 @@ function AdminRoutes() {
           <Route
             path="/reviews"
             element={<ReviewsPage token={token} onLogout={() => setToken("")} />}
+          />
+          <Route
+            path="/featured"
+            element={<FeaturedReviewsPage token={token} onLogout={() => setToken("")} />}
+          />
+          <Route
+            path="/sensitive-words"
+            element={<SensitiveWordsPage token={token} onLogout={() => setToken("")} />}
           />
           <Route path="/assets" element={<AssetsPage token={token} onLogout={() => setToken("")} />} />
           <Route path="*" element={<Navigate to="/books" replace />} />

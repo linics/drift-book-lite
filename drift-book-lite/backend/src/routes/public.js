@@ -4,6 +4,7 @@ const { getSiteAsset } = require("../services/assets");
 const {
   searchBooks,
   getBookById,
+  getHomepageData,
   listApprovedReviews,
   createReview,
 } = require("../services/library");
@@ -11,13 +12,20 @@ const {
 const router = express.Router();
 
 const createReviewSchema = z.object({
-  displayName: z.string().trim().min(1).max(50),
+  systemId: z.string().trim().min(1).max(20),
+  studentName: z.string().trim().min(1).max(50),
+  idCardSuffix: z.string().trim().min(4).max(4),
   content: z.string().trim().min(1).max(500),
 });
 
 router.get("/site-assets", async (_req, res) => {
   const assets = await getSiteAsset();
   res.json(assets);
+});
+
+router.get("/homepage", async (_req, res) => {
+  const data = await getHomepageData();
+  res.json(data);
 });
 
 router.get("/books/search", async (req, res) => {
@@ -39,7 +47,7 @@ router.post("/books/:bookId/reviews", async (req, res) => {
   const payload = createReviewSchema.parse(req.body);
   const review = await createReview(req.params.bookId, payload);
   res.status(201).json({
-    message: "评语已提交，等待管理员审核",
+    message: "留言已进入待审核队列",
     review,
   });
 });

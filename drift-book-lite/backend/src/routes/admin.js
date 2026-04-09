@@ -1,7 +1,6 @@
 const express = require("express");
 const { z } = require("zod");
 const { prisma } = require("../lib/prisma");
-const { adminUsername } = require("../lib/env");
 const { signAdminToken, verifyPassword } = require("../utils/auth");
 const { requireAdmin } = require("../middleware/adminAuth");
 const { uploadMemory, uploadSiteAsset } = require("../middleware/uploads");
@@ -14,6 +13,12 @@ const {
   updateBook,
   listAdminReviews,
   updateReview,
+  getFeaturedReviews,
+  updateFeaturedReviews,
+  listSensitiveWords,
+  createSensitiveWord,
+  updateSensitiveWord,
+  deleteSensitiveWord,
   decodeUploadFilename,
 } = require("../services/library");
 const {
@@ -48,9 +53,8 @@ const importSchema = z.object({
 });
 
 const updateReviewSchema = z.object({
-  action: z.enum(["approve", "reject", "hide"]),
+  action: z.enum(["approve", "hide"]),
   finalContent: z.string().trim().min(1).max(500).optional(),
-  rejectionReason: z.string().trim().max(200).optional(),
 });
 
 const updateAssetSchema = z.object({
@@ -68,10 +72,18 @@ const updateAssetSchema = z.object({
     .optional(),
 });
 
+const sensitiveWordSchema = z.object({
+  word: z.string().trim().min(1).max(50),
+});
+
+const featuredReviewsSchema = z.object({
+  reviewIds: z.array(z.number().int().positive()).max(10),
+});
+
 router.post("/login", async (req, res) => {
   const { username, password } = loginSchema.parse(req.body);
   const adminUser = await prisma.adminUser.findUnique({ where: { username } });
-  if (!adminUser || username !== adminUsername) {
+  if (!adminUser) {
     throw new HttpError(401, "账号或密码错误");
   }
 
@@ -155,6 +167,39 @@ router.patch("/reviews/:reviewId", async (req, res) => {
   const payload = updateReviewSchema.parse(req.body);
   const review = await updateReview(req.params.reviewId, req.adminUser.sub, payload);
   res.json({ review });
+});
+
+router.get("/featured-reviews", async (_req, res) => {
+  const reviews = await getFeaturedReviews();
+  res.json({ reviews });
+});
+
+router.put("/featured-reviews", async (req, res) => {
+  const payload = featuredReviewsSchema.parse(req.body);
+  const reviews = await updateFeaturedReviews(payload.reviewIds);
+  res.json({ reviews });
+});
+
+router.get("/sensitive-words", async (_req, res) => {
+  const words = await listSensitiveWords();
+  res.json({ words });
+});
+
+router.post("/sensitive-words", async (req, res) => {
+  const payload = sensitiveWordSchema.parse(req.body);
+  const word = await createSensitiveWord(payload.word);
+  res.status(201).json({ word });
+});
+
+router.patch("/sensitive-words/:wordId", async (req, res) => {
+  const payload = sensitiveWordSchema.parse(req.body);
+  const word = await updateSensitiveWord(req.params.wordId, payload.word);
+  res.json({ word });
+});
+
+router.delete("/sensitive-words/:wordId", async (req, res) => {
+  const word = await deleteSensitiveWord(req.params.wordId);
+  res.json({ word });
 });
 
 router.get("/assets", async (_req, res) => {

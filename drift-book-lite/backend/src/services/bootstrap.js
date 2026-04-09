@@ -1,15 +1,19 @@
 const bcrypt = require("bcryptjs");
 const { prisma } = require("../lib/prisma");
-const { adminUsername, adminPassword } = require("../lib/env");
+const { adminUsernames, adminPassword } = require("../lib/env");
 const { defaultProcessContent } = require("./assets");
+const { ensureStudentRoster } = require("./studentRoster");
 
-async function ensureAdminUser() {
+async function ensureAdminUsers() {
   const passwordHash = await bcrypt.hash(adminPassword, 10);
-  await prisma.adminUser.upsert({
-    where: { username: adminUsername },
-    update: { passwordHash },
-    create: { username: adminUsername, passwordHash },
-  });
+
+  for (const username of adminUsernames) {
+    await prisma.adminUser.upsert({
+      where: { username },
+      update: { passwordHash },
+      create: { username, passwordHash },
+    });
+  }
 }
 
 async function ensureSiteAsset() {
@@ -25,9 +29,20 @@ async function ensureSiteAsset() {
   });
 }
 
+async function migrateLegacyReviews() {
+  await prisma.bookReview.updateMany({
+    where: { identityType: "legacy" },
+    data: {
+      matchedSensitiveWords: [],
+    },
+  });
+}
+
 async function bootstrapSystem() {
-  await ensureAdminUser();
+  await ensureAdminUsers();
   await ensureSiteAsset();
+  await ensureStudentRoster();
+  await migrateLegacyReviews();
 }
 
 module.exports = { bootstrapSystem };

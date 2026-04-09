@@ -22,7 +22,7 @@ async function requireAdmin(req, _res, next) {
     req.adminUser = payload;
     return next();
   } catch (_error) {
-    return next(new HttpError(401, "登录已失效"));
+    return next(new HttpError(401, "登录已失效，请重新登录"));
   }
 }
 

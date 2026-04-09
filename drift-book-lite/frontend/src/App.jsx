@@ -299,9 +299,35 @@ function useSiteAssets() {
   return { assets, error };
 }
 
+function useHomepageData() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get("/homepage")
+      .then((response) => {
+        if (!active) return;
+        setData(response.data);
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        setError(requestError.response?.data?.message || "首页榜单加载失败");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { data, error };
+}
+
 function HomePage() {
   const navigate = useNavigate();
   const { assets, error } = useSiteAssets();
+  const { data: homepage, error: homepageError } = useHomepageData();
   const [activeIndex, setActiveIndex] = useState(0);
 
   const slides = useMemo(
@@ -317,15 +343,15 @@ function HomePage() {
     return () => window.clearInterval(timer);
   }, [slides.length]);
 
-  if (error) {
+  if (error || homepageError) {
     return (
       <PublicShell assets={assets}>
-        <ErrorPane message={error} />
+        <ErrorPane message={error || homepageError} />
       </PublicShell>
     );
   }
 
-  if (!assets) {
+  if (!assets || !homepage) {
     return (
       <PublicShell assets={assets}>
         <LoadingPane label="正在装载活动主页" />
@@ -337,79 +363,164 @@ function HomePage() {
 
   return (
     <PublicShell assets={assets}>
-      <main className="grid flex-1 gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="paper-panel relative overflow-hidden rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-12">
-          <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-[#8b2f2a]/10 blur-3xl" />
-          <Badge tone="accent">馆内阅读活动</Badge>
-          <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.05] text-stone-900 md:text-7xl">
-            开启阅读漂流，
-            <span className="text-[#8b2f2a]"> 遇见下一本好书。</span>
-          </h1>
-          <p className="mt-6 max-w-2xl text-base leading-8 text-stone-600 md:text-lg">
-            在“一本书的漂流”里，你可以寻找感兴趣的藏书，阅读同学们的真实感悟，并留下独属于你的阅读足迹。
-          </p>
-
-          <SearchForm onSubmit={(value) => value && navigate(`/search?q=${encodeURIComponent(value)}`)} />
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {[
-              ["启程漂流", "随时出发", "只需轻轻一扫，即可随时进入这片阅读的海洋。"],
-              ["寻觅好书", "一键探索", "输入书名线索，快速发现你心仪的那本读物。"],
-              ["点滴笔触", "真诚分享", "看看大家的读后感，也欢迎留下你独一无二的见解。"],
-            ].map(([value, title, desc]) => (
-              <div key={title} className="rounded-[1.8rem] border border-stone-200/80 bg-white/75 p-5">
-                <div className="font-display text-2xl text-stone-900">{value}</div>
-                <div className="mt-2 text-sm font-semibold text-stone-800">{title}</div>
-                <p className="mt-2 text-sm leading-6 text-stone-600">{desc}</p>
-              </div>
-            ))}
+      <main className="grid flex-1 gap-8 xl:grid-cols-[0.78fr_1.32fr_0.9fr]">
+        <section className="space-y-5">
+          <div className="rounded-[2.2rem] border border-stone-200/80 bg-white/80 p-6 shadow-[0_22px_70px_rgba(47,33,15,0.08)]">
+            <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Activity Rank</p>
+            <h2 className="mt-3 font-display text-3xl text-stone-900">留言量排行榜</h2>
+            <p className="mt-3 text-sm leading-7 text-stone-600">
+              仅统计已审核公开的接龙层数，点击即可进入对应书页继续阅读。
+            </p>
+            <div className="mt-6 space-y-3">
+              {(homepage.activityBooks || []).length === 0 ? (
+                <div className="rounded-[1.6rem] border border-dashed border-stone-300 bg-[#faf6ef] p-4 text-sm leading-7 text-stone-500">
+                  当前还没有公开接龙，欢迎成为第一位留言的读者。
+                </div>
+              ) : (
+                homepage.activityBooks.map((book, index) => (
+                  <Link
+                    key={book.id}
+                    to={`/books/${book.id}`}
+                    className="block rounded-[1.6rem] border border-stone-200 bg-[#faf6ef] p-4 transition hover:border-[#8b2f2a]/35 hover:bg-white"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
+                          No.{String(index + 1).padStart(2, "0")}
+                        </p>
+                        <h3 className="mt-2 text-base font-semibold text-stone-900">
+                          {book.title}
+                        </h3>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-display text-3xl text-[#8b2f2a]">
+                          {book.messageCount}
+                        </div>
+                        <p className="text-xs text-stone-500">层留言</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
           </div>
         </section>
 
-        <section className="relative flex min-h-[28rem] flex-col overflow-hidden rounded-[2.4rem] border border-white/60 bg-stone-900 shadow-[0_30px_100px_rgba(23,17,8,0.35)]">
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,16,9,0.1),rgba(22,16,9,0.8))]" />
-          <AnimatePresence mode="wait">
-            {activeSlide ? (
-              <MotionImage
-                key={activeSlide.id}
-                src={assetUrl(activeSlide.path)}
-                alt={activeSlide.label}
-                className="absolute inset-0 h-full w-full object-cover"
-                initial={{ scale: 1.08, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.98, opacity: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              />
-            ) : (
-              <MotionDiv
-                key="placeholder"
-                className="absolute inset-0 bg-[linear-gradient(135deg,#5b201f,#19130f)]"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              />
-            )}
-          </AnimatePresence>
-          <div className="relative z-10 mt-auto p-8 text-white md:p-10">
-            <Badge tone="warning">校园轮播</Badge>
-            <h2 className="mt-4 font-display text-4xl leading-tight md:text-5xl">
-              每一本书，都在静静等待它的下一位读者。
-            </h2>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-stone-200">
-              图书馆是我们阅读漂流的共同起点。从这里出发，共同开启一段充满未知的阅读旅程。
+        <section className="space-y-8">
+          <section className="paper-panel relative overflow-hidden rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-12">
+            <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-[#8b2f2a]/10 blur-3xl" />
+            <Badge tone="accent">馆内阅读活动</Badge>
+            <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.05] text-stone-900 md:text-7xl">
+              一条接龙，
+              <span className="text-[#8b2f2a]"> 把一本到下一位读者手里。</span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-stone-600 md:text-lg">
+              搜索一本书，进入它的专属接龙页。每位同学都能在审核后留下自己的那一层阅读回声。
             </p>
-            <div className="mt-8 flex gap-3">
-              {slides.map((slide, index) => (
-                <button
-                  key={slide.id}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  className={clsx(
-                    "h-2.5 rounded-full transition-all",
-                    activeIndex === index ? "w-12 bg-white" : "w-5 bg-white/35"
-                  )}
-                  aria-label={`切换到 ${slide.label}`}
-                />
+
+            <SearchForm
+              onSubmit={(value) => value && navigate(`/search?q=${encodeURIComponent(value)}`)}
+            />
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              {[
+                ["实名校验", "更稳妥", "每次留言都要重新核验学号、姓名和身份证后四位。"],
+                ["单链接龙", "更清晰", "每本书只有一条持续延伸的阅读链，不做分叉讨论。"],
+                ["精选摘录", "更聚焦", "管理员会把有代表性的留言放到首页，帮助更多人进入好书。"],
+              ].map(([value, title, desc]) => (
+                <div key={title} className="rounded-[1.8rem] border border-stone-200/80 bg-white/75 p-5">
+                  <div className="font-display text-2xl text-stone-900">{value}</div>
+                  <div className="mt-2 text-sm font-semibold text-stone-800">{title}</div>
+                  <p className="mt-2 text-sm leading-6 text-stone-600">{desc}</p>
+                </div>
               ))}
+            </div>
+          </section>
+
+          <section className="relative flex min-h-[28rem] flex-col overflow-hidden rounded-[2.4rem] border border-white/60 bg-stone-900 shadow-[0_30px_100px_rgba(23,17,8,0.35)]">
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,16,9,0.1),rgba(22,16,9,0.8))]" />
+            <AnimatePresence mode="wait">
+              {activeSlide ? (
+                <MotionImage
+                  key={activeSlide.id}
+                  src={assetUrl(activeSlide.path)}
+                  alt={activeSlide.label}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  initial={{ scale: 1.08, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.98, opacity: 0 }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                />
+              ) : (
+                <MotionDiv
+                  key="placeholder"
+                  className="absolute inset-0 bg-[linear-gradient(135deg,#5b201f,#19130f)]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                />
+              )}
+            </AnimatePresence>
+            <div className="relative z-10 mt-auto p-8 text-white md:p-10">
+              <Badge tone="warning">校园轮播</Badge>
+              <h2 className="mt-4 font-display text-4xl leading-tight md:text-5xl">
+                每一层接龙，都是下一位读者的入场券。
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-stone-200">
+                从图书馆七楼出发，在同一本书下留下连续的阅读痕迹，让阅读真正流动起来。
+              </p>
+              <div className="mt-8 flex gap-3">
+                {slides.map((slide, index) => (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    onClick={() => setActiveIndex(index)}
+                    className={clsx(
+                      "h-2.5 rounded-full transition-all",
+                      activeIndex === index ? "w-12 bg-white" : "w-5 bg-white/35"
+                    )}
+                    aria-label={`切换到 ${slide.label}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section className="space-y-5">
+          <div className="rounded-[2.2rem] border border-stone-200/80 bg-white/80 p-6 shadow-[0_22px_70px_rgba(47,33,15,0.08)]">
+            <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Featured Lines</p>
+            <h2 className="mt-3 font-display text-3xl text-stone-900">管理员精选留言</h2>
+            <p className="mt-3 text-sm leading-7 text-stone-600">
+              选取已经公开的接龙片段，点击后直接跳到对应图书与层级。
+            </p>
+            <div className="mt-6 space-y-3">
+              {(homepage.featuredReviews || []).length === 0 ? (
+                <div className="rounded-[1.6rem] border border-dashed border-stone-300 bg-[#faf6ef] p-4 text-sm leading-7 text-stone-500">
+                  还没有精选留言，管理员审核后会逐步补充。
+                </div>
+              ) : (
+                homepage.featuredReviews.map((review, index) => (
+                  <Link
+                    key={review.id}
+                    to={`/books/${review.bookId}#review-${review.id}`}
+                    className="block rounded-[1.6rem] border border-stone-200 bg-[#faf6ef] p-4 transition hover:border-[#8b2f2a]/35 hover:bg-white"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <Badge tone="accent">精选 {String(index + 1).padStart(2, "0")}</Badge>
+                      {review.sequenceNumber ? (
+                        <Badge tone="muted">第 {review.sequenceNumber} 层</Badge>
+                      ) : null}
+                    </div>
+                    <h3 className="mt-4 text-base font-semibold text-stone-900">
+                      {review.bookTitle}
+                    </h3>
+                    <p className="mt-3 max-h-[11rem] overflow-hidden text-sm leading-7 text-stone-700">
+                      {review.content}
+                    </p>
+                    <p className="mt-3 text-xs text-stone-500">{review.displayName}</p>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
         </section>
@@ -418,8 +529,8 @@ function HomePage() {
       <section className="mt-10 grid gap-6 rounded-[2.4rem] border border-stone-200/70 bg-white/75 p-8 shadow-[0_20px_60px_rgba(58,39,18,0.08)] md:grid-cols-[0.8fr_1.2fr] md:p-10">
         <SectionHeading
           eyebrow="How It Works"
-          title="如何参与阅读漂流？轻松几步即可开启。"
-          description="阅读从来不是一件孤独的事。跟随以下步骤，与大家分享你收获的书香与喜悦。"
+          title="如何加入这一条接龙？"
+          description="流程被刻意压得很短，但每一步都更明确：先找书，再实名核验，最后把你的那一层接上去。"
         />
         <div className="grid gap-4">
           {(assets.processContent || []).map((step, index) => (
@@ -566,7 +677,12 @@ function BookDetailPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState("");
-  const [formState, setFormState] = useState({ displayName: "", content: "" });
+  const [formState, setFormState] = useState({
+    systemId: "",
+    studentName: "",
+    idCardSuffix: "",
+    content: "",
+  });
 
   async function loadData() {
     const [bookRes, reviewsRes] = await Promise.all([
@@ -602,6 +718,15 @@ function BookDetailPage() {
     };
   }, [bookId]);
 
+  useEffect(() => {
+    if (!reviews.length || !window.location.hash) return;
+    const target = document.getElementById(window.location.hash.slice(1));
+    if (!target) return;
+    window.setTimeout(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+  }, [reviews]);
+
   async function handleSubmit(event) {
     event.preventDefault();
     setSubmitting(true);
@@ -611,10 +736,15 @@ function BookDetailPage() {
     try {
       const response = await api.post(`/books/${bookId}/reviews`, formState);
       setSuccess(response.data.message);
-      setFormState({ displayName: "", content: "" });
+      setFormState({
+        systemId: "",
+        studentName: "",
+        idCardSuffix: "",
+        content: "",
+      });
       await loadData();
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "评语提交失败");
+      setError(requestError.response?.data?.message || "留言提交失败");
     } finally {
       setSubmitting(false);
     }
@@ -660,6 +790,7 @@ function BookDetailPage() {
     <PublicShell assets={assets}>
       <main className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="paper-panel rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-10">
+          <Badge tone="accent">单书接龙页</Badge>
           <h1 className="mt-6 font-display text-5xl leading-tight text-stone-900">
             {book.title}
           </h1>
@@ -687,6 +818,12 @@ function BookDetailPage() {
               <p className="mt-3 text-sm text-stone-500">暂无条形码信息</p>
             )}
           </div>
+          <div className="mt-6 rounded-[1.8rem] border border-[#8b2f2a]/10 bg-[#8b2f2a]/5 p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-[#8b2f2a]">留言规则</p>
+            <p className="mt-3 text-sm leading-7 text-stone-700">
+              这本书只有一条连续接龙。你提交的内容会先进入待审核队列，审核通过后才会作为下一层公开显示。
+            </p>
+          </div>
           <div className="mt-8 flex gap-3">
             <Link to="/">
               <SecondaryButton>返回首页</SecondaryButton>
@@ -697,19 +834,26 @@ function BookDetailPage() {
         <section className="flex flex-col gap-6">
           <div className="paper-panel rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)]">
             <SectionHeading
-              eyebrow="Public Reviews"
-              title="已公开评语"
-              description="来自同学们的真实阅读感受，随时期待你的加入。"
+              eyebrow="Public Thread"
+              title="已公开接龙"
+              description="这里只展示已经审核公开的层级。顺序越靠后，表示越接近当前最新一层。"
             />
             <div className="mt-8 space-y-5">
               {reviews.length === 0 ? (
                 <div className="rounded-[1.8rem] border border-dashed border-stone-300 bg-[#faf6ef] p-6 text-sm leading-7 text-stone-500">
-                  这本书还没有公开评语，欢迎你成为第一位留下阅读感受的人。
+                  这本书还没有公开接龙，欢迎你成为第一位接上去的读者。
                 </div>
               ) : null}
               {reviews.map((review) => (
-                <div key={review.id} className="rounded-[1.8rem] border border-stone-200 bg-white/75 p-5">
+                <div
+                  key={review.id}
+                  id={`review-${review.id}`}
+                  className="rounded-[1.8rem] border border-stone-200 bg-white/75 p-5 scroll-mt-28"
+                >
                   <div className="flex flex-wrap items-center gap-3">
+                    {review.sequenceNumber ? (
+                      <Badge tone="accent">第 {review.sequenceNumber} 层</Badge>
+                    ) : null}
                     <span className="font-semibold text-stone-900">{review.displayName}</span>
                     <Badge tone="muted">{formatDate(review.reviewedAt || review.createdAt)}</Badge>
                   </div>
@@ -722,27 +866,53 @@ function BookDetailPage() {
           <div className="paper-panel rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)]">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#8b2f2a]">Submit Review</p>
-                <h2 className="mt-2 font-display text-3xl text-stone-900">写下你的评语</h2>
+                <p className="text-xs uppercase tracking-[0.3em] text-[#8b2f2a]">Join The Chain</p>
+                <h2 className="mt-2 font-display text-3xl text-stone-900">接上你的这一层</h2>
               </div>
               <Badge tone="accent">审核后公开</Badge>
             </div>
 
             <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-              <Field label="姓名或昵称">
+              <Field label="学号">
                 <TextInput
-                  value={formState.displayName}
+                  value={formState.systemId}
                   onChange={(event) =>
                     setFormState((current) => ({
                       ...current,
-                      displayName: event.target.value,
+                      systemId: event.target.value,
                     }))
                   }
                   disabled={submitting}
-                  placeholder="例如 小林"
+                  placeholder="例如 320250002"
                 />
               </Field>
-              <Field label="评语内容" hint="请输入 1 到 500 字的阅读感受。">
+              <Field label="姓名">
+                <TextInput
+                  value={formState.studentName}
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      studentName: event.target.value,
+                    }))
+                  }
+                  disabled={submitting}
+                  placeholder="请输入学籍姓名"
+                />
+              </Field>
+              <Field label="身份证后四位" hint="仅用于本次身份校验，不会在前台公开显示。">
+                <TextInput
+                  value={formState.idCardSuffix}
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      idCardSuffix: event.target.value.toUpperCase(),
+                    }))
+                  }
+                  disabled={submitting}
+                  placeholder="例如 3225"
+                />
+              </Field>
+              <Field label="接龙内容" hint="请输入 1 到 500 字的阅读感受或回应。">
                 <TextArea
                   rows={5}
                   value={formState.content}
@@ -753,7 +923,7 @@ function BookDetailPage() {
                     }))
                   }
                   disabled={submitting}
-                  placeholder="写下你的阅读感受、喜欢的段落或推荐理由。"
+                  placeholder="写下你想接上的这一层内容。"
                 />
               </Field>
 
@@ -769,7 +939,7 @@ function BookDetailPage() {
               ) : null}
 
               <PrimaryButton type="submit" disabled={submitting} className="w-full sm:w-auto">
-                {submitting ? "正在提交" : "提交评语"}
+                {submitting ? "正在提交" : "提交并进入审核"}
               </PrimaryButton>
             </form>
           </div>
