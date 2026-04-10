@@ -923,7 +923,7 @@ function ReviewsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="留言审核"
-      description="审核实名接龙留言，查看学生身份、敏感词命中情况，并决定公开或隐藏。"
+      description="审核学生提交的接龙留言，查看实名信息与敏感词命中，决定公开或隐藏。"
     >
       <StatusMessage error={error} success={success} />
       <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
@@ -1307,7 +1307,7 @@ function SensitiveWordsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="敏感词库"
-      description="维护审核辅助词库。命中敏感词的留言仍可提交，但会在后台高亮提示。"
+      description="维护审核辅助词库；命中词条的留言在后台会高亮标出，仍需人工判断。"
     >
       <StatusMessage error={error} success={success} />
       <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">

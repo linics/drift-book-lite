@@ -385,11 +385,11 @@ function HomePage() {
             <div className="relative z-10 flex h-full flex-col">
               <Badge tone="accent">馆内阅读活动</Badge>
               <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.05] text-stone-900 md:text-7xl">
-                一条接龙，
-                <span className="text-[#8b2f2a]"> 把一本到下一位读者手里。</span>
+                让这本书，
+                <span className="text-[#8b2f2a]"> 继续流向下一位读者。</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-8 text-stone-600 md:text-lg">
-                搜索一本书，进入它的专属接龙页。每位同学都能在审核后留下自己的那一层阅读回声。
+                在"一本书的漂流"里，寻找一本书，留下你的那一层，看见阅读真正流动起来。
               </p>
 
               <SearchForm
@@ -397,7 +397,7 @@ function HomePage() {
               />
 
               <div className="mt-6 flex flex-wrap gap-3 text-xs uppercase tracking-[0.24em] text-stone-500">
-                {["馆内统一入口", "每本书一条接龙", "审核通过后公开"].map((item) => (
+                {["馆内阅读活动", "一本书一条接龙", "审核后公开展示"].map((item) => (
                   <span
                     key={item}
                     className="rounded-full border border-stone-200/80 bg-white/72 px-3 py-2"
@@ -408,7 +408,7 @@ function HomePage() {
               </div>
 
               <p className="mt-auto pt-10 text-sm leading-7 text-stone-500">
-                先从搜索开始，再沿着已经公开的接龙，找到你想接上的那一本书。
+                从一次搜索开始，找到那本正在流动的书。
               </p>
             </div>
           </section>
@@ -439,10 +439,10 @@ function HomePage() {
             <div className="relative z-10 mt-auto p-8 text-white md:p-10">
               <Badge tone="warning">校园轮播</Badge>
               <h2 className="mt-4 max-w-2xl font-display text-4xl leading-tight md:text-5xl">
-                阅读不是停在书页里，而是继续流向下一个人。
+                每一本书，都在静静等待它的下一位读者。
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-stone-200">
-                从图书馆七楼出发，在同一本书下留下连续的阅读痕迹，让阅读真正流动起来。
+                图书馆是我们阅读漂流的共同起点。从这里出发，留下属于你的那一层阅读印记。
               </p>
               <div className="mt-8 flex items-center gap-3">
                 {slides.map((slide, index) => (
@@ -477,7 +477,7 @@ function HomePage() {
                 <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Activity Rank</p>
                 <h2 className="mt-3 font-display text-3xl text-stone-900">留言量排行榜</h2>
                 <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600">
-                  只做轻量预览，帮助你快速找到当前最活跃的接龙书页。
+                  找一本正在流动的书，接上属于你的那一层。
                 </p>
               </div>
               <span className="rounded-full bg-[#8b2f2a]/8 px-3 py-2 text-xs uppercase tracking-[0.24em] text-[#8b2f2a]">
@@ -575,8 +575,8 @@ function HomePage() {
         >
           <SectionHeading
             eyebrow="How It Works"
-            title="如何加入这一条接龙？"
-            description="流程被刻意压得很短，但每一步都更明确：先找书，再实名核验，最后把你的那一层接上去。"
+            title="如何留下你的那一层？"
+            description="阅读从来不是一件孤独的事。找到一本书，留下你的声音，让它继续流向下一位读者。"
           />
           <div className="grid gap-4">
             {(assets.processContent || []).map((step, index) => (
@@ -868,7 +868,7 @@ function BookDetailPage() {
           <div className="mt-6 rounded-[1.8rem] border border-[#8b2f2a]/10 bg-[#8b2f2a]/5 p-5">
             <p className="text-xs uppercase tracking-[0.28em] text-[#8b2f2a]">留言规则</p>
             <p className="mt-3 text-sm leading-7 text-stone-700">
-              这本书只有一条连续接龙。你提交的内容会先进入待审核队列，审核通过后才会作为下一层公开显示。
+              你的留言经审核通过后，将成为这条接龙的下一层。
             </p>
           </div>
           <div className="mt-8 flex gap-3">
@@ -883,7 +883,7 @@ function BookDetailPage() {
             <SectionHeading
               eyebrow="Public Thread"
               title="已公开接龙"
-              description="这里只展示已经审核公开的层级。顺序越靠后，表示越接近当前最新一层。"
+              description="来自同学们的阅读印记，一层一层，记录着这本书的旅程。"
             />
             <div className="mt-8 space-y-5">
               {reviews.length === 0 ? (
