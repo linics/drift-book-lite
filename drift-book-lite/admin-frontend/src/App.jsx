@@ -551,7 +551,7 @@ function BooksPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="图书与导入"
-      description="导入新的 CSV 或 XLSX 书目目录，查看历史批次，并对单本图书做必要修订。"
+      description="上传书目文件批量导入，查看历史批次，并对单本图书做修订。"
     >
       <StatusMessage error={loadError} />
 
@@ -625,7 +625,7 @@ function BooksPage({ token, onLogout }) {
           <div className="mt-8 space-y-4">
             <h4 className="font-semibold text-stone-900">导入历史</h4>
             {batches.length === 0 ? (
-              <EmptyState>暂无导入批次，先上传一份 CSV 书目目录。</EmptyState>
+              <EmptyState>暂无导入记录，先上传一份 CSV 或 XLSX 书目文件。</EmptyState>
             ) : (
               batches.map((batch) => (
                 <div
@@ -849,7 +849,7 @@ function BooksPage({ token, onLogout }) {
                 </form>
               ) : (
                 <p className="mt-4 text-sm leading-7 text-stone-600">
-                  从左侧列表中选择一本图书后，可在这里修订书名、作者、出版信息与副标题。
+                  从左侧选择一本图书以修订基本信息。
                 </p>
               )}
             </div>
@@ -960,7 +960,7 @@ function ReviewsPage({ token, onLogout }) {
         </div>
         <div className="mt-6 space-y-5">
           {reviews.length === 0 ? (
-            <EmptyState>当前筛选条件下没有评语。</EmptyState>
+            <EmptyState>暂无符合条件的留言。</EmptyState>
           ) : (
             reviews.map((review) => {
               const statusMeta = reviewStatusMeta(review.status);
@@ -1128,7 +1128,7 @@ function FeaturedReviewsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="精选运营"
-      description="从已公开留言中挑选首页精选内容，并手动调整展示顺序。"
+      description="从公开留言中选取精选内容，手动调整首页展示顺序。"
     >
       <StatusMessage error={error} success={success} />
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -1144,7 +1144,7 @@ function FeaturedReviewsPage({ token, onLogout }) {
           </div>
           <div className="mt-6 space-y-4">
             {selectedReviews.length === 0 ? (
-              <EmptyState>当前还没有精选留言。</EmptyState>
+              <EmptyState>尚无精选留言，从右侧列表中选取。</EmptyState>
             ) : (
               selectedReviews.map((review, index) => (
                 <div
@@ -1195,7 +1195,7 @@ function FeaturedReviewsPage({ token, onLogout }) {
           <h3 className="mt-2 font-display text-3xl text-stone-900">可选公开留言</h3>
           <div className="mt-6 space-y-4">
             {availableReviews.length === 0 ? (
-              <EmptyState>没有更多可加入精选的公开留言。</EmptyState>
+              <EmptyState>暂无可加入精选的公开留言。</EmptyState>
             ) : (
               availableReviews.map((review) => (
                 <div
@@ -1398,14 +1398,14 @@ function SensitiveWordsPage({ token, onLogout }) {
                 {importSummary?.defaultSensitiveWordsDir || "使用后端当前默认目录"}
               </p>
               <p className="mt-3 text-sm leading-6 text-stone-500">
-                来源快照随项目一起部署，不依赖目标机器运行时访问 GitHub。
+                内置词库文件随项目一起部署，无需运行时访问网络。
               </p>
               <p className="mt-3 text-xs leading-6 text-stone-500">
-                默认快照不包含政治类、GFW 补充、腾讯/网易大杂包等高误判类别。
+                默认词库不含政治类、GFW 补充、腾讯/网易大杂包等高误判类别。
               </p>
               {importSummary?.sourceFiles?.length ? (
                 <p className="mt-3 text-xs leading-6 text-stone-500">
-                  当前快照文件：{importSummary.sourceFiles.join("、")}
+                  内置文件：{importSummary.sourceFiles.join("、")}
                 </p>
               ) : null}
             </div>
@@ -1645,7 +1645,7 @@ function AssetsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="站点素材"
-      description="维护学生端首页使用的 Logo 与轮播图，并可从默认目录重新载入一套首页图片。"
+      description="管理学生端首页的 Logo 与轮播图，支持从默认目录重新载入。"
     >
       <StatusMessage error={error} success={success} />
       {!assets ? (
@@ -1660,7 +1660,7 @@ function AssetsPage({ token, onLogout }) {
                 <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Default Assets</p>
                 <h3 className="mt-2 font-display text-3xl text-stone-900">默认首页图片</h3>
                 <p className="mt-3 text-sm leading-7 text-stone-600">
-                  系统启动时会从默认目录自动补齐缺失的 Logo 或轮播图。这里可以主动执行一次“恢复默认”，用默认目录中的首页图片覆盖当前配置。
+                  可在这里手动重新载入默认目录中的首页图片，覆盖当前配置。
                 </p>
               </div>
               <PrimaryButton
@@ -1732,7 +1732,7 @@ function AssetsPage({ token, onLogout }) {
 
             <div className="mt-6 space-y-4">
               {assets.carouselImages.length === 0 ? (
-                <EmptyState>当前没有轮播图，直接新增即可。</EmptyState>
+                <EmptyState>尚无轮播图，上传后即可显示。</EmptyState>
               ) : (
                 assets.carouselImages.map((image, index) => (
                   <div
