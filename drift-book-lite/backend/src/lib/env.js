@@ -1,10 +1,16 @@
 require("dotenv").config();
 const path = require("path");
 
+const INSECURE_DEFAULTS = new Set(["change-this-secret", "change-this-password"]);
+const IS_PROD = process.env.NODE_ENV === "production";
+
 function required(name, fallback) {
   const value = process.env[name] || fallback;
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
+  }
+  if (IS_PROD && INSECURE_DEFAULTS.has(value)) {
+    throw new Error(`[SECURITY] ${name} is using an insecure default value. Set a strong value before running in production.`);
   }
   return value;
 }
@@ -32,8 +38,7 @@ module.exports = {
   defaultSensitiveWordsDir:
     process.env.DEFAULT_SENSITIVE_WORDS_DIR ||
     path.resolve(projectRoot, "resources", "default-sensitive-words"),
-  studentRosterPath:
-    process.env.STUDENT_ROSTER_PATH || path.resolve(projectRoot, "..", "2025学年学生信息.xls"),
+  studentRosterPath: process.env.STUDENT_ROSTER_PATH || "",
   uploadsDir: process.env.UPLOADS_DIR
     ? path.resolve(process.env.UPLOADS_DIR)
     : path.resolve(projectRoot, "uploads"),

@@ -443,10 +443,6 @@ function matchesGroupIdentity(book, identity, { respectPublisher = false } = {})
   return true;
 }
 
-function encodeLegacyGroupId(identity) {
-  return Buffer.from(JSON.stringify(identity)).toString("base64url");
-}
-
 function encodePublicGroupId(anchorBookId, identity) {
   return Buffer.from(
     JSON.stringify({
@@ -877,14 +873,6 @@ async function ensureNoDuplicateReview({ systemId, bookIds, content }) {
   }
 }
 
-function parsePositiveIntId(value, resourceName) {
-  const normalized = String(value ?? "").trim();
-  if (!/^[1-9]\d*$/.test(normalized)) {
-    throw new HttpError(400, `${resourceName} ID 不合法`);
-  }
-
-  return Number.parseInt(normalized, 10);
-}
 
 function levenshtein(left, right) {
   if (left === right) return 0;

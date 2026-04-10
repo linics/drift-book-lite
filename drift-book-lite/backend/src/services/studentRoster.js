@@ -24,6 +24,9 @@ function buildStudentDisplayName(className, studentName) {
 }
 
 function loadStudentRosterRows() {
+  if (!studentRosterPath) {
+    throw new Error("STUDENT_ROSTER_PATH is not configured. Set this environment variable to the path of the student roster file.");
+  }
   if (!fs.existsSync(studentRosterPath)) {
     throw new Error(`Student roster file not found: ${studentRosterPath}`);
   }
