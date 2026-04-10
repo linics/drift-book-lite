@@ -190,8 +190,12 @@ router.put("/featured-reviews", async (req, res) => {
 });
 
 router.get("/sensitive-words", async (_req, res) => {
-  const words = await listSensitiveWords();
-  res.json({ words });
+  const result = await listSensitiveWords({
+    query: _req.query.q,
+    page: _req.query.page,
+    pageSize: _req.query.pageSize,
+  });
+  res.json(result);
 });
 
 router.post("/sensitive-words/import-defaults", async (_req, res) => {

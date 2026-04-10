@@ -263,6 +263,46 @@ describe("drift book lite api", () => {
     );
   });
 
+  test("lists sensitive words with pagination metadata and query filter", async () => {
+    await prisma.sensitiveWord.createMany({
+      data: [
+        { word: "兼职", normalizedWord: "兼职" },
+        { word: "兼职刷单", normalizedWord: "兼职刷单" },
+        { word: "贪污", normalizedWord: "贪污" },
+      ],
+    });
+
+    const pageRes = await request(app)
+      .get("/api/admin/sensitive-words")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ page: 1, pageSize: 2 });
+    expect(pageRes.status).toBe(200);
+    expect(pageRes.body.words).toHaveLength(2);
+    expect(pageRes.body.pagination).toEqual(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 2,
+        total: 3,
+        totalPages: 2,
+      })
+    );
+
+    const filteredRes = await request(app)
+      .get("/api/admin/sensitive-words")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ q: "兼职", page: 1, pageSize: 10 });
+    expect(filteredRes.status).toBe(200);
+    expect(filteredRes.body.words.map((word) => word.word)).toEqual(["兼职", "兼职刷单"]);
+    expect(filteredRes.body.pagination).toEqual(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 10,
+        total: 2,
+        totalPages: 1,
+      })
+    );
+  });
+
   test("imports xlsx catalog rows and exposes configured display fields in admin books", async () => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet([

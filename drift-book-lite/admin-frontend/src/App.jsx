@@ -18,6 +18,24 @@ const api = axios.create({
 });
 
 const ADMIN_TOKEN_KEY = "drift-book-admin-token";
+const DEFAULT_PAGE_SIZE = 30;
+
+function buildPaginationState({ page = 1, pageSize = DEFAULT_PAGE_SIZE, total = 0, totalPages } = {}) {
+  const normalizedPage = Math.max(1, Number(page) || 1);
+  const normalizedPageSize = Math.max(1, Number(pageSize) || DEFAULT_PAGE_SIZE);
+  const normalizedTotal = Math.max(0, Number(total) || 0);
+  const normalizedTotalPages =
+    totalPages == null
+      ? Math.max(1, Math.ceil(normalizedTotal / normalizedPageSize))
+      : Math.max(1, Number(totalPages) || 1);
+
+  return {
+    page: Math.min(normalizedPage, normalizedTotalPages),
+    pageSize: normalizedPageSize,
+    total: normalizedTotal,
+    totalPages: normalizedTotalPages,
+  };
+}
 
 function getAdminToken() {
   return window.localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -1216,6 +1234,10 @@ function FeaturedReviewsPage({ token, onLogout }) {
 
 function SensitiveWordsPage({ token, onLogout }) {
   const [words, setWords] = useState([]);
+  const [pagination, setPagination] = useState(
+    buildPaginationState({ page: 1, pageSize: DEFAULT_PAGE_SIZE, total: 0, totalPages: 1 })
+  );
+  const [query, setQuery] = useState("");
   const [newWord, setNewWord] = useState("");
   const [drafts, setDrafts] = useState({});
   const [importSummary, setImportSummary] = useState(null);
@@ -1223,14 +1245,34 @@ function SensitiveWordsPage({ token, onLogout }) {
   const [success, setSuccess] = useState("");
   const [defaultImporting, setDefaultImporting] = useState(false);
 
-  async function loadWords() {
+  async function loadWords({ keyword = query, page = pagination.page } = {}) {
     try {
       const response = await api.get("/admin/sensitive-words", {
         headers: authHeaders(token),
+        params: {
+          ...(keyword ? { q: keyword } : {}),
+          page,
+          pageSize: pagination.pageSize,
+        },
       });
-      setWords(response.data.words);
+      const rawWords = Array.isArray(response.data?.words) ? response.data.words : [];
+      const hasPagination = response.data?.pagination && typeof response.data.pagination === "object";
+      const nextWords = hasPagination
+        ? rawWords
+        : rawWords.slice((page - 1) * pagination.pageSize, page * pagination.pageSize);
+      const fallbackTotal = rawWords.length;
+      setWords(nextWords);
+      setPagination(
+        buildPaginationState({
+          page,
+          pageSize: pagination.pageSize,
+          total: fallbackTotal,
+          totalPages: response.data?.pagination?.totalPages,
+          ...response.data?.pagination,
+        })
+      );
       setDrafts(
-        Object.fromEntries(response.data.words.map((word) => [word.id, word.word]))
+        Object.fromEntries(nextWords.map((word) => [word.id, word.word]))
       );
     } catch (requestError) {
       if (isUnauthorized(requestError)) {
@@ -1242,7 +1284,7 @@ function SensitiveWordsPage({ token, onLogout }) {
   }
 
   useEffect(() => {
-    loadWords();
+    loadWords({ keyword: "", page: 1 });
   }, [token]);
 
   async function handleCreate(event) {
@@ -1257,7 +1299,7 @@ function SensitiveWordsPage({ token, onLogout }) {
       );
       setNewWord("");
       setSuccess("敏感词已添加。");
-      await loadWords();
+      await loadWords({ keyword: query, page: 1 });
     } catch (requestError) {
       if (isUnauthorized(requestError)) {
         onLogout();
@@ -1277,7 +1319,7 @@ function SensitiveWordsPage({ token, onLogout }) {
         { headers: authHeaders(token) }
       );
       setSuccess("敏感词已更新。");
-      await loadWords();
+      await loadWords({ keyword: query, page: pagination.page });
     } catch (requestError) {
       if (isUnauthorized(requestError)) {
         onLogout();
@@ -1295,7 +1337,10 @@ function SensitiveWordsPage({ token, onLogout }) {
         headers: authHeaders(token),
       });
       setSuccess("敏感词已删除。");
-      await loadWords();
+      await loadWords({
+        keyword: query,
+        page: Math.min(pagination.page, Math.max(1, pagination.totalPages - 1)),
+      });
     } catch (requestError) {
       if (isUnauthorized(requestError)) {
         onLogout();
@@ -1319,7 +1364,7 @@ function SensitiveWordsPage({ token, onLogout }) {
       setSuccess(
         `内置词库导入完成：新增 ${response.data.importedWords} 条，跳过 ${response.data.skippedWords} 条。`
       );
-      await loadWords();
+      await loadWords({ keyword: query, page: 1 });
     } catch (requestError) {
       if (isUnauthorized(requestError)) {
         onLogout();
@@ -1397,7 +1442,75 @@ function SensitiveWordsPage({ token, onLogout }) {
           </section>
         </div>
         <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-          <h3 className="font-display text-3xl text-stone-900">现有词库</h3>
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="font-display text-3xl text-stone-900">现有词库</h3>
+              <p className="mt-2 text-sm text-stone-500">
+                当前显示第 {pagination.page} / {pagination.totalPages} 页，共 {pagination.total} 条
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+              <Field label="搜索词条">
+                <TextInput
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      loadWords({ keyword: event.currentTarget.value, page: 1 });
+                    }
+                  }}
+                  placeholder="输入敏感词后回车"
+                  className="md:w-64"
+                />
+              </Field>
+              <SecondaryButton
+                type="button"
+                className="h-12"
+                onClick={() => loadWords({ keyword: query, page: 1 })}
+              >
+                搜索
+              </SecondaryButton>
+              <SecondaryButton
+                type="button"
+                className="h-12"
+                onClick={() => {
+                  setQuery("");
+                  loadWords({ keyword: "", page: 1 });
+                }}
+              >
+                重置
+              </SecondaryButton>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] border border-stone-200 bg-white/65 px-4 py-3 text-sm text-stone-600">
+            <span>分页加载可避免词库扩大后一次性读取全部词条。</span>
+            <div className="flex gap-2">
+              <SecondaryButton
+                type="button"
+                className="px-4 py-2 text-xs"
+                disabled={pagination.page <= 1}
+                onClick={() =>
+                  loadWords({ keyword: query, page: Math.max(1, pagination.page - 1) })
+                }
+              >
+                上一页
+              </SecondaryButton>
+              <SecondaryButton
+                type="button"
+                className="px-4 py-2 text-xs"
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() =>
+                  loadWords({
+                    keyword: query,
+                    page: Math.min(pagination.totalPages, pagination.page + 1),
+                  })
+                }
+              >
+                下一页
+              </SecondaryButton>
+            </div>
+          </div>
           <div className="mt-6 space-y-4">
             {words.length === 0 ? (
               <EmptyState>当前词库为空。</EmptyState>

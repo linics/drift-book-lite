@@ -1520,11 +1520,38 @@ function serializeSensitiveWord(word) {
   };
 }
 
-async function listSensitiveWords() {
-  const words = await prisma.sensitiveWord.findMany({
-    orderBy: [{ word: "asc" }],
-  });
-  return words.map(serializeSensitiveWord);
+async function listSensitiveWords({ query, page = 1, pageSize = 20 } = {}) {
+  const normalizedPage = Math.max(1, Number(page) || 1);
+  const normalizedPageSize = Math.min(100, Math.max(1, Number(pageSize) || 20));
+  const trimmedQuery = String(query || "").trim();
+  const where = trimmedQuery
+    ? {
+        OR: [
+          { word: { contains: trimmedQuery } },
+          { normalizedWord: { contains: normalizeSensitiveWord(trimmedQuery) } },
+        ],
+      }
+    : {};
+
+  const [total, words] = await prisma.$transaction([
+    prisma.sensitiveWord.count({ where }),
+    prisma.sensitiveWord.findMany({
+      where,
+      orderBy: [{ word: "asc" }],
+      skip: (normalizedPage - 1) * normalizedPageSize,
+      take: normalizedPageSize,
+    }),
+  ]);
+
+  return {
+    words: words.map(serializeSensitiveWord),
+    pagination: {
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / normalizedPageSize)),
+    },
+  };
 }
 
 async function createSensitiveWord(word) {
