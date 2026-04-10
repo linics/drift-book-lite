@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
-const { defaultProcessContent } = require("../src/services/assets");
+const { defaultProcessContent, syncDefaultSiteAssets } = require("../src/services/assets");
 const { loadStudentRosterRows } = require("../src/services/studentRoster");
 
 const prisma = new PrismaClient();
@@ -27,6 +27,7 @@ async function main() {
     update: {},
     create: { id: 1, carouselImages: [], processContent: defaultProcessContent },
   });
+  await syncDefaultSiteAssets({ mode: "fill-missing" });
 
   if ((await prisma.studentRoster.count()) === 0) {
     await prisma.studentRoster.createMany({

@@ -89,10 +89,10 @@ copy .env.example .env
 DATABASE_URL="file:./dev.db"
 PORT=8080
 JWT_SECRET="replace-with-a-long-random-string"
-ADMIN_USERNAME="admin"
+ADMIN_USERNAMES="admin1,admin2,admin3"
 ADMIN_PASSWORD="replace-with-a-strong-password"
 APP_BASE_URL="http://10.11.23.45:5174"
-MATERIALS_DIR="D:/your-path/library-management-system/materials"
+DEFAULT_SITE_ASSETS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-site-assets"
 ```
 
 说明：
@@ -102,7 +102,7 @@ MATERIALS_DIR="D:/your-path/library-management-system/materials"
 - `JWT_SECRET`：必须改成自己的随机字符串
 - `ADMIN_PASSWORD`：必须改掉默认密码
 - `APP_BASE_URL`：学生端访问地址
-- `MATERIALS_DIR`：指向仓库根目录下的 `materials`
+- `DEFAULT_SITE_ASSETS_DIR`：指向 `drift-book-lite/resources/default-site-assets`
 
 安装并初始化：
 
@@ -274,7 +274,7 @@ npm.cmd run build
 
 - `drift-book-lite/backend/dev.db`
 - `drift-book-lite/backend/uploads/`
-- 仓库根目录 `materials/`
+- `drift-book-lite/resources/default-site-assets/`
 - 各目录下实际使用的 `.env`
 
 至少要定期备份这些内容。

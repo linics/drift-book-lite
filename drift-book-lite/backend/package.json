@@ -8,7 +8,7 @@
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "test": "prisma db push --accept-data-loss && vitest run"
+    "test": "node tests/run-tests.js"
   },
   "keywords": [],
   "author": "",

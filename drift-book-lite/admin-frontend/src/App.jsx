@@ -1381,6 +1381,7 @@ function AssetsPage({ token, onLogout }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [carouselUploading, setCarouselUploading] = useState(false);
+  const [defaultAssetReloading, setDefaultAssetReloading] = useState(false);
 
   async function loadAssets() {
     try {
@@ -1431,11 +1432,37 @@ function AssetsPage({ token, onLogout }) {
     }
   }
 
+  async function handleReloadDefaultAssets() {
+    setDefaultAssetReloading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.post(
+        "/admin/assets/reload-default-assets",
+        {},
+        {
+          headers: authHeaders(token),
+        }
+      );
+      setAssets(response.data);
+      setSuccess("默认首页图片已重新载入，当前 Logo 与轮播图已更新。");
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "默认素材重载失败"));
+    } finally {
+      setDefaultAssetReloading(false);
+    }
+  }
+
   return (
     <AdminLayout
       onLogout={onLogout}
       title="站点素材"
-      description="这里只保留校园轮播图添加入口，用于向学生端首页追加新的轮播图片。"
+      description="维护学生端首页使用的 Logo 与轮播图，并可从默认目录重新载入一套首页图片。"
     >
       <StatusMessage error={error} success={success} />
       {!assets ? (
@@ -1446,9 +1473,41 @@ function AssetsPage({ token, onLogout }) {
         <div className="space-y-6">
           <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
             <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-3xl">
+                <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Default Assets</p>
+                <h3 className="mt-2 font-display text-3xl text-stone-900">默认首页图片</h3>
+                <p className="mt-3 text-sm leading-7 text-stone-600">
+                  系统启动时会从默认目录自动补齐缺失的 Logo 或轮播图。这里可以主动执行一次“恢复默认”，用默认目录中的首页图片覆盖当前配置。
+                </p>
+              </div>
+              <PrimaryButton
+                type="button"
+                className="min-w-44"
+                disabled={defaultAssetReloading}
+                onClick={handleReloadDefaultAssets}
+              >
+                {defaultAssetReloading ? "正在重载" : "重新载入默认素材"}
+              </PrimaryButton>
+            </div>
+            <div className="mt-6 rounded-[1.8rem] border border-stone-200 bg-white/85 p-5">
+              <p className="text-xs uppercase tracking-[0.28em] text-stone-500">当前默认目录</p>
+              <p className="mt-3 break-all rounded-2xl bg-[#faf6ef] px-4 py-3 font-mono text-xs text-stone-700">
+                {assets.defaultSiteAssetsDir || "未配置"}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-500">
+                识别规则：`logo.*` 作为学校 Logo，`carousel-01.*`、`carousel-02.*` 等按顺序作为首页轮播图。
+              </p>
+            </div>
+          </section>
+
+          <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Carousel</p>
                 <h3 className="mt-2 font-display text-3xl text-stone-900">校园轮播图</h3>
+                <p className="mt-3 text-sm leading-7 text-stone-600">
+                  这里追加的是当前生效中的轮播图，不会修改默认目录中的图片文件。
+                </p>
               </div>
               <div className="flex flex-col gap-3 md:flex-row md:items-end">
                 <Field label="新轮播标题">

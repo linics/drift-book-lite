@@ -7,14 +7,14 @@ services:
       PORT: 8080
       DATABASE_URL: file:/data/dev.db
       JWT_SECRET: ${JWT_SECRET:-change-this-secret}
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_USERNAMES: ${ADMIN_USERNAMES:-admin1,admin2,admin3}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-this-password}
       APP_BASE_URL: http://localhost:${FRONTEND_PORT:-5174}
-      MATERIALS_DIR: /app/materials
+      DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:
-      - ./materials:/app/materials:ro
+      - ./drift-book-lite/resources/default-site-assets:/app/resources/default-site-assets:ro
       - backend_data:/data
       - backend_uploads:/app/uploads
     restart: unless-stopped

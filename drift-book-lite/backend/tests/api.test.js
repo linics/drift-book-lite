@@ -3,7 +3,6 @@ const request = require("supertest");
 const XLSX = require("xlsx");
 const { prisma } = require("../src/lib/prisma");
 const { createApp } = require("../src/app");
-const { bootstrapFromMaterials } = require("../src/services/assets");
 
 let app;
 let adminToken;
@@ -13,6 +12,14 @@ const studentIdentity = {
   studentName: "王沁愉",
   idCardSuffix: "3225",
 };
+
+const siteAssetFixtureDir = path.resolve(
+  __dirname,
+  "..",
+  "..",
+  "resources",
+  "default-site-assets"
+);
 
 async function clearTableIfExists(tableName) {
   const rows = await prisma.$queryRawUnsafe(
@@ -70,32 +77,17 @@ describe("drift book lite api", () => {
     await prisma.$disconnect();
   });
 
-  test("bootstraps site assets from materials", async () => {
-    const asset = await bootstrapFromMaterials();
-    expect(asset.schoolLogoPath).toContain("/uploads/site-assets/");
-    expect(asset.carouselImages.length).toBeGreaterThan(0);
-  });
-
   test("uploads logo and carousel assets through dedicated admin endpoints", async () => {
-    const imagePath = path.resolve(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      "materials",
-      "43bb6febd4d0326ac05c15b7dbde0fc6.png"
-    );
-
     const logoRes = await request(app)
       .post("/api/admin/assets/logo")
       .set("Authorization", `Bearer ${adminToken}`)
-      .attach("file", imagePath);
+      .attach("file", path.join(siteAssetFixtureDir, "logo.jpg"));
     expect(logoRes.status).toBe(201);
 
     const carouselRes = await request(app)
       .post("/api/admin/assets/carousel")
       .set("Authorization", `Bearer ${adminToken}`)
-      .attach("file", imagePath)
+      .attach("file", path.join(siteAssetFixtureDir, "carousel-01.jpg"))
       .field("label", "新增轮播");
     expect(carouselRes.status).toBe(201);
     expect(carouselRes.body.asset.label).toBe("新增轮播");

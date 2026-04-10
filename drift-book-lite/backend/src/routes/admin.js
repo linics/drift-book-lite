@@ -1,6 +1,7 @@
 const express = require("express");
 const { z } = require("zod");
 const { prisma } = require("../lib/prisma");
+const { defaultSiteAssetsDir } = require("../lib/env");
 const { signAdminToken, verifyPassword } = require("../utils/auth");
 const { requireAdmin } = require("../middleware/adminAuth");
 const { uploadMemory, uploadSiteAsset } = require("../middleware/uploads");
@@ -24,7 +25,7 @@ const {
 const {
   getSiteAsset,
   updateSiteAsset,
-  bootstrapFromMaterials,
+  syncDefaultSiteAssets,
   uploadLogoAsset,
   uploadCarouselAsset,
 } = require("../services/assets");
@@ -79,6 +80,13 @@ const sensitiveWordSchema = z.object({
 const featuredReviewsSchema = z.object({
   reviewIds: z.array(z.number().int().positive()).max(10),
 });
+
+function toAdminAssetResponse(assets) {
+  return {
+    ...assets,
+    defaultSiteAssetsDir,
+  };
+}
 
 router.post("/login", async (req, res) => {
   const { username, password } = loginSchema.parse(req.body);
@@ -204,12 +212,12 @@ router.delete("/sensitive-words/:wordId", async (req, res) => {
 
 router.get("/assets", async (_req, res) => {
   const assets = await getSiteAsset();
-  res.json(assets);
+  res.json(toAdminAssetResponse(assets));
 });
 
-router.post("/assets/bootstrap-from-materials", async (_req, res) => {
-  const assets = await bootstrapFromMaterials();
-  res.json(assets);
+router.post("/assets/reload-default-assets", async (_req, res) => {
+  const assets = await syncDefaultSiteAssets({ mode: "replace-homepage-images" });
+  res.json(toAdminAssetResponse(assets));
 });
 
 router.post("/assets/logo", uploadSiteAsset.single("file"), async (req, res) => {
@@ -225,7 +233,7 @@ router.post("/assets/carousel", uploadSiteAsset.single("file"), async (req, res)
 router.patch("/assets", async (req, res) => {
   const payload = updateAssetSchema.parse(req.body);
   const assets = await updateSiteAsset(payload);
-  res.json(assets);
+  res.json(toAdminAssetResponse(assets));
 });
 
 module.exports = { adminRouter: router };

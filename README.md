@@ -70,8 +70,9 @@
 ├── drift-book-lite/
 │   ├── frontend/         # 学生端 React + Vite
 │   ├── admin-frontend/   # 管理端 React + Vite
-│   └── backend/          # Express + Prisma + SQLite
-├── materials/            # 学校 logo、轮播图等初始化素材
+│   ├── backend/          # Express + Prisma + SQLite
+│   └── resources/
+│       └── default-site-assets/  # 默认首页图片（Logo、轮播图）
 ├── docker-compose.yml    # 推荐部署方式
 ├── .env.example          # 根目录部署环境变量模板
 ├── 图书信息.csv
@@ -95,7 +96,7 @@
 - 修改图书信息
 - 审核、隐藏、驳回评语
 - 上传 Logo、轮播图
-- 从 `materials/` 初始化站点素材
+- 重新载入默认首页图片
 
 ### 后端
 
@@ -328,7 +329,7 @@ FRONTEND_PORT=5174
 ADMIN_FRONTEND_PORT=5175
 
 JWT_SECRET=please-change-this-to-a-long-random-string
-ADMIN_USERNAME=admin
+ADMIN_USERNAMES=admin1,admin2,admin3
 ADMIN_PASSWORD=please-change-this-password
 
 FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
@@ -341,7 +342,7 @@ ADMIN_FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 - `FRONTEND_PORT`：学生端页面端口
 - `ADMIN_FRONTEND_PORT`：管理端页面端口
 - `JWT_SECRET`：必须改成你自己的随机字符串
-- `ADMIN_USERNAME` / `ADMIN_PASSWORD`：初始管理员账号
+- `ADMIN_USERNAMES` / `ADMIN_PASSWORD`：初始管理员账号列表和默认密码
 - `FRONTEND_API_BASE_URL`：学生端页面里写死的 API 地址，局域网部署时必须写成部署机 IP
 - `ADMIN_FRONTEND_API_BASE_URL`：管理端页面里写死的 API 地址，局域网部署时也必须写成部署机 IP
 
@@ -472,13 +473,13 @@ Docker Compose 会创建两个卷：
 
 此外：
 
-- `materials/` 会只读挂载到后端容器，作为初始化素材来源
+- `drift-book-lite/resources/default-site-assets/` 会只读挂载到后端容器，作为默认首页图片来源
 
 备份时至少保留：
 
 - 项目根目录下的 `.env`
 - Docker 卷中的数据库和上传文件
-- `materials/` 目录
+- `drift-book-lite/resources/default-site-assets/` 目录
 
 #### 哪些动作通常是安全的
 
@@ -507,7 +508,7 @@ Docker Compose 会创建两个卷：
 - `.env`
 - `backend_data`
 - `backend_uploads`
-- `materials/`
+- `drift-book-lite/resources/default-site-assets/`
 
 #### 最小恢复原则
 
@@ -556,7 +557,7 @@ docker compose up --build -d
 | `FRONTEND_PORT` | 学生端对外端口 | `5174` |
 | `ADMIN_FRONTEND_PORT` | 管理端对外端口 | `5175` |
 | `JWT_SECRET` | JWT 签名密钥 | `replace-with-random-secret` |
-| `ADMIN_USERNAME` | 管理员用户名 | `admin` |
+| `ADMIN_USERNAMES` | 管理员用户名列表 | `admin1,admin2,admin3` |
 | `ADMIN_PASSWORD` | 管理员密码 | `replace-with-strong-password` |
 | `FRONTEND_API_BASE_URL` | 学生端构建时写入的 API 地址 | `http://192.168.1.50:8080/api` |
 | `ADMIN_FRONTEND_API_BASE_URL` | 管理端构建时写入的 API 地址 | `http://192.168.1.50:8080/api` |
@@ -570,10 +571,10 @@ docker compose up --build -d
 | `DATABASE_URL` | Prisma 使用的 SQLite 地址 | `file:./dev.db` |
 | `PORT` | 后端监听端口 | `8080` |
 | `JWT_SECRET` | JWT 密钥 | `change-this-secret` |
-| `ADMIN_USERNAME` | 管理员用户名 | `admin` |
+| `ADMIN_USERNAMES` | 管理员用户名列表 | `admin1,admin2,admin3` |
 | `ADMIN_PASSWORD` | 管理员密码 | `change-this-password` |
 | `APP_BASE_URL` | 学生端地址 | `http://localhost:5174` |
-| `MATERIALS_DIR` | 素材目录路径 | 空 |
+| `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | `drift-book-lite/resources/default-site-assets` |
 
 ## 图书导入与素材
 
@@ -596,8 +597,10 @@ docker compose up --build -d
 
 ### 站点素材
 
-- `materials/` 可以存放学校 Logo 和轮播原图
-- 管理端可调用“从素材目录初始化”
+- `drift-book-lite/resources/default-site-assets/` 可以存放学校 Logo 和首页轮播原图
+- 文件命名约定：`logo.*` 作为学校 Logo，`carousel-01.*`、`carousel-02.*` 按顺序作为首页轮播图
+- 系统启动时会自动补齐缺失的 Logo 或轮播图
+- 管理端可调用“重新载入默认素材”恢复默认首页图片
 - 最终访问资源通过 `/uploads` 暴露
 
 ## 主要接口
@@ -623,7 +626,7 @@ docker compose up --build -d
 - `GET /api/admin/reviews`
 - `PATCH /api/admin/reviews/:reviewId`
 - `GET /api/admin/assets`
-- `POST /api/admin/assets/bootstrap-from-materials`
+- `POST /api/admin/assets/reload-default-assets`
 - `POST /api/admin/assets/logo`
 - `POST /api/admin/assets/carousel`
 - `PATCH /api/admin/assets`
@@ -700,7 +703,7 @@ docker compose up --build -d
 
 修改根目录 `.env` 里的：
 
-- `ADMIN_USERNAME`
+- `ADMIN_USERNAMES`
 - `ADMIN_PASSWORD`
 
 然后重启后端：

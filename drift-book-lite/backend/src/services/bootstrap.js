@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const { prisma } = require("../lib/prisma");
 const { adminUsernames, adminPassword } = require("../lib/env");
-const { defaultProcessContent } = require("./assets");
+const { defaultProcessContent, syncDefaultSiteAssets } = require("./assets");
 const { ensureStudentRoster } = require("./studentRoster");
 
 async function ensureAdminUsers() {
@@ -41,6 +41,7 @@ async function migrateLegacyReviews() {
 async function bootstrapSystem() {
   await ensureAdminUsers();
   await ensureSiteAsset();
+  await syncDefaultSiteAssets({ mode: "fill-missing" });
   await ensureStudentRoster();
   await migrateLegacyReviews();
 }
