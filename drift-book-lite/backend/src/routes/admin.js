@@ -29,6 +29,7 @@ const {
   uploadLogoAsset,
   uploadCarouselAsset,
 } = require("../services/assets");
+const { importDefaultSensitiveWords } = require("../services/defaultSensitiveWords");
 const { HttpError } = require("../utils/httpError");
 
 const router = express.Router();
@@ -191,6 +192,11 @@ router.put("/featured-reviews", async (req, res) => {
 router.get("/sensitive-words", async (_req, res) => {
   const words = await listSensitiveWords();
   res.json({ words });
+});
+
+router.post("/sensitive-words/import-defaults", async (_req, res) => {
+  const result = await importDefaultSensitiveWords();
+  res.json(result);
 });
 
 router.post("/sensitive-words", async (req, res) => {

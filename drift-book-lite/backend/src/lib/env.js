@@ -29,6 +29,9 @@ module.exports = {
   defaultSiteAssetsDir:
     process.env.DEFAULT_SITE_ASSETS_DIR ||
     path.resolve(projectRoot, "resources", "default-site-assets"),
+  defaultSensitiveWordsDir:
+    process.env.DEFAULT_SENSITIVE_WORDS_DIR ||
+    path.resolve(projectRoot, "resources", "default-sensitive-words"),
   studentRosterPath:
     process.env.STUDENT_ROSTER_PATH || path.resolve(projectRoot, "..", "2025学年学生信息.xls"),
   uploadsDir: process.env.UPLOADS_DIR

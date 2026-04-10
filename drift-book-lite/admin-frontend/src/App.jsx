@@ -1218,8 +1218,10 @@ function SensitiveWordsPage({ token, onLogout }) {
   const [words, setWords] = useState([]);
   const [newWord, setNewWord] = useState("");
   const [drafts, setDrafts] = useState({});
+  const [importSummary, setImportSummary] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [defaultImporting, setDefaultImporting] = useState(false);
 
   async function loadWords() {
     try {
@@ -1303,6 +1305,32 @@ function SensitiveWordsPage({ token, onLogout }) {
     }
   }
 
+  async function handleImportDefaults() {
+    setError("");
+    setSuccess("");
+    setDefaultImporting(true);
+    try {
+      const response = await api.post(
+        "/admin/sensitive-words/import-defaults",
+        {},
+        { headers: authHeaders(token) }
+      );
+      setImportSummary(response.data);
+      setSuccess(
+        `内置词库导入完成：新增 ${response.data.importedWords} 条，跳过 ${response.data.skippedWords} 条。`
+      );
+      await loadWords();
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "内置敏感词导入失败"));
+    } finally {
+      setDefaultImporting(false);
+    }
+  }
+
   return (
     <AdminLayout
       onLogout={onLogout}
@@ -1310,22 +1338,64 @@ function SensitiveWordsPage({ token, onLogout }) {
       description="维护审核辅助词库；命中词条的留言在后台会高亮标出，仍需人工判断。"
     >
       <StatusMessage error={error} success={success} />
-      <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-          <h3 className="font-display text-3xl text-stone-900">新增敏感词</h3>
-          <form className="mt-6 space-y-4" onSubmit={handleCreate}>
-            <Field label="词条">
-              <TextInput
-                value={newWord}
-                onChange={(event) => setNewWord(event.target.value)}
-                placeholder="例如：禁词"
-              />
-            </Field>
-            <PrimaryButton type="submit" disabled={!newWord.trim()}>
-              添加词条
-            </PrimaryButton>
-          </form>
-        </section>
+      <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="space-y-6">
+          <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+            <h3 className="font-display text-3xl text-stone-900">导入内置词库</h3>
+            <p className="mt-3 text-sm leading-7 text-stone-600">
+              项目仓库内置了中度扩容默认词库，包含广告、色情、涉枪涉爆、非法网址，以及新增的暴恐、
+              补充、贪腐共 7 类。
+              点击后会按归一化结果去重导入，已存在的管理员自定义词条会自动跳过。
+            </p>
+            <div className="mt-5 rounded-[1.8rem] border border-stone-200 bg-white/85 p-5">
+              <p className="text-xs uppercase tracking-[0.28em] text-stone-500">默认词库目录</p>
+              <p className="mt-3 break-all rounded-2xl bg-[#faf6ef] px-4 py-3 font-mono text-xs text-stone-700">
+                {importSummary?.defaultSensitiveWordsDir || "使用后端当前默认目录"}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-500">
+                来源快照随项目一起部署，不依赖目标机器运行时访问 GitHub。
+              </p>
+              <p className="mt-3 text-xs leading-6 text-stone-500">
+                默认快照不包含政治类、GFW 补充、腾讯/网易大杂包等高误判类别。
+              </p>
+              {importSummary?.sourceFiles?.length ? (
+                <p className="mt-3 text-xs leading-6 text-stone-500">
+                  当前快照文件：{importSummary.sourceFiles.join("、")}
+                </p>
+              ) : null}
+            </div>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <PrimaryButton
+                type="button"
+                disabled={defaultImporting}
+                onClick={handleImportDefaults}
+              >
+                {defaultImporting ? "正在导入" : "导入内置词库"}
+              </PrimaryButton>
+              {importSummary ? (
+                <span className="text-xs text-stone-500">
+                  共 {importSummary.totalWords} 条，新增 {importSummary.importedWords} 条，跳过{" "}
+                  {importSummary.skippedWords} 条
+                </span>
+              ) : null}
+            </div>
+          </section>
+          <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+            <h3 className="font-display text-3xl text-stone-900">新增敏感词</h3>
+            <form className="mt-6 space-y-4" onSubmit={handleCreate}>
+              <Field label="词条">
+                <TextInput
+                  value={newWord}
+                  onChange={(event) => setNewWord(event.target.value)}
+                  placeholder="例如：禁词"
+                />
+              </Field>
+              <PrimaryButton type="submit" disabled={!newWord.trim()}>
+                添加词条
+              </PrimaryButton>
+            </form>
+          </section>
+        </div>
         <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
           <h3 className="font-display text-3xl text-stone-900">现有词库</h3>
           <div className="mt-6 space-y-4">
@@ -1496,6 +1566,17 @@ function AssetsPage({ token, onLogout }) {
               </p>
               <p className="mt-3 text-sm leading-6 text-stone-500">
                 识别规则：`logo.*` 作为学校 Logo，`carousel-01.*`、`carousel-02.*` 等按顺序作为首页轮播图。
+              </p>
+              <p className="mt-2 text-sm leading-6 text-stone-500">
+                这里展示的是后端当前运行环境中的目录提示。Docker Compose 部署时通常会显示容器内路径
+                <code className="mx-1 rounded bg-stone-100 px-1.5 py-0.5 text-[11px]">
+                  /app/resources/default-site-assets
+                </code>
+                ，无 Docker 部署时则显示本机实际目录；只要
+                <code className="mx-1 rounded bg-stone-100 px-1.5 py-0.5 text-[11px]">
+                  DEFAULT_SITE_ASSETS_DIR
+                </code>
+                配置正确，其他电脑也会自动显示各自环境里的路径。
               </p>
             </div>
           </section>

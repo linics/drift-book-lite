@@ -842,9 +842,13 @@ async function detectSensitiveWords(content) {
     orderBy: [{ word: "asc" }],
   });
   const normalizedContent = normalizeReviewContent(content);
-  const matchedSensitiveWords = sensitiveWords
-    .filter((item) => normalizedContent.includes(item.normalizedWord))
-    .map((item) => item.word);
+  const matchedSensitiveWords = [
+    ...new Set(
+      sensitiveWords
+        .filter((item) => normalizedContent.includes(item.normalizedWord))
+        .map((item) => item.word)
+    ),
+  ];
 
   return {
     sensitiveHit: matchedSensitiveWords.length > 0,
@@ -1641,6 +1645,7 @@ async function getHomepageData() {
 
 module.exports = {
   normalizeTitle,
+  normalizeSensitiveWord,
   searchBooks,
   getBookById,
   getHomepageData,
