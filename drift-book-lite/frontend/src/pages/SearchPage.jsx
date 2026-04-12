@@ -10,7 +10,6 @@ import { LoadingPane } from "../components/LoadingPane.jsx";
 import { ErrorPane } from "../components/ErrorPane.jsx";
 import { PublicShell } from "../components/PublicShell.jsx";
 import { AnimatedPage } from "../components/AnimatedPage.jsx";
-import { StaggerItem } from "../components/StaggerItem.jsx";
 
 export function SearchPage() {
   const navigate = useNavigate();
@@ -115,9 +114,15 @@ export function SearchPage() {
             ) : (
               <div className="grid gap-5 md:grid-cols-2">
                 {visibleBooks.map((book, index) => (
-                  <StaggerItem key={book.id} index={index} className="h-full">
+                  <div
+                    key={book.id}
+                    style={{
+                      animation: "fadeInUp 0.3s ease both",
+                      animationDelay: `${index * 0.04}s`,
+                    }}
+                  >
                     <BookCard book={book} />
-                  </StaggerItem>
+                  </div>
                 ))}
               </div>
             )}
