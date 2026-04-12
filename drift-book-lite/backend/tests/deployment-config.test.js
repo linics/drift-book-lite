@@ -33,8 +33,12 @@ describe("deployment configuration", () => {
   test("root compose exposes all bundled default resource directories", () => {
     const compose = readWorkspaceFile("docker-compose.yml");
 
-    expect(compose).toContain("APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5174}");
-    expect(compose).toContain("ADMIN_APP_BASE_URL: ${ADMIN_APP_BASE_URL:-http://localhost:5175}");
+    expect(compose).toContain(
+      "APP_BASE_URL: ${APP_BASE_URL:-http://localhost:${FRONTEND_PORT:-5174}}"
+    );
+    expect(compose).toContain(
+      "ADMIN_APP_BASE_URL: ${ADMIN_APP_BASE_URL:-http://localhost:${ADMIN_FRONTEND_PORT:-5175}}"
+    );
     expect(compose).not.toContain("ALLOWED_ORIGINS:");
     expect(compose).toContain("DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets");
     expect(compose).toContain("DEFAULT_SENSITIVE_WORDS_DIR: /app/resources/default-sensitive-words");
