@@ -6,7 +6,7 @@ const { Prisma } = require("@prisma/client");
 const { publicRouter } = require("./routes/public");
 const { adminRouter } = require("./routes/admin");
 const { bootstrapSystem } = require("./services/bootstrap");
-const { uploadsDir, projectRoot, appBaseUrl } = require("./lib/env");
+const { uploadsDir, projectRoot, appBaseUrl, adminAppBaseUrl } = require("./lib/env");
 const { HttpError } = require("./utils/httpError");
 
 async function createApp() {
@@ -16,7 +16,7 @@ async function createApp() {
   const allowedOrigins = (
     process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(",")
-      : [appBaseUrl, process.env.ADMIN_APP_BASE_URL || "http://localhost:5175"]
+      : [appBaseUrl, adminAppBaseUrl]
   )
     .map((s) => s.trim())
     .filter(Boolean);

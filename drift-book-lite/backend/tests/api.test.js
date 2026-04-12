@@ -7,6 +7,16 @@ const { createApp } = require("../src/app");
 let app;
 let adminToken;
 
+const APP_MODULES = [
+  "../src/lib/env",
+  "../src/utils/auth",
+  "../src/middleware/adminAuth",
+  "../src/routes/admin",
+  "../src/routes/public",
+  "../src/services/bootstrap",
+  "../src/app",
+];
+
 const studentIdentity = {
   systemId: "320250002",
   studentName: "王沁愉",
@@ -20,6 +30,12 @@ const siteAssetFixtureDir = path.resolve(
   "resources",
   "default-site-assets"
 );
+
+function purgeAppModules() {
+  for (const modulePath of APP_MODULES) {
+    delete require.cache[require.resolve(modulePath)];
+  }
+}
 
 async function clearTableIfExists(tableName) {
   const rows = await prisma.$queryRawUnsafe(
@@ -212,6 +228,70 @@ describe("drift book lite api", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5175");
+  });
+
+  test("allows configured lan frontend origins when ALLOWED_ORIGINS is unset", async () => {
+    const previousAppBaseUrl = process.env.APP_BASE_URL;
+    const previousAdminAppBaseUrl = process.env.ADMIN_APP_BASE_URL;
+    const previousAllowedOrigins = process.env.ALLOWED_ORIGINS;
+
+    try {
+      process.env.APP_BASE_URL = "http://192.168.1.50:5174";
+      process.env.ADMIN_APP_BASE_URL = "http://192.168.1.50:5175";
+      delete process.env.ALLOWED_ORIGINS;
+      purgeAppModules();
+
+      const freshApp = await require("../src/app").createApp();
+      const response = await request(freshApp)
+        .get("/api/health")
+        .set("Origin", "http://192.168.1.50:5175");
+
+      expect(response.status).toBe(200);
+      expect(response.headers["access-control-allow-origin"]).toBe("http://192.168.1.50:5175");
+    } finally {
+      process.env.APP_BASE_URL = previousAppBaseUrl;
+      process.env.ADMIN_APP_BASE_URL = previousAdminAppBaseUrl;
+      if (previousAllowedOrigins === undefined) {
+        delete process.env.ALLOWED_ORIGINS;
+      } else {
+        process.env.ALLOWED_ORIGINS = previousAllowedOrigins;
+      }
+      purgeAppModules();
+    }
+  });
+
+  test("rejects admin jwt after that username is removed from ADMIN_USERNAMES", async () => {
+    const previousAdminUsernames = process.env.ADMIN_USERNAMES;
+
+    try {
+      process.env.ADMIN_USERNAMES = "admin1,admin2,admin3";
+      purgeAppModules();
+
+      let freshApp = await require("../src/app").createApp();
+      const loginResponse = await request(freshApp).post("/api/admin/login").send({
+        username: "admin2",
+        password: "change-this-password",
+      });
+      expect(loginResponse.status).toBe(200);
+
+      process.env.ADMIN_USERNAMES = "admin1";
+      purgeAppModules();
+      freshApp = await require("../src/app").createApp();
+
+      const response = await request(freshApp)
+        .get("/api/admin/books")
+        .set("Authorization", `Bearer ${loginResponse.body.token}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toContain("重新登录");
+    } finally {
+      if (previousAdminUsernames === undefined) {
+        delete process.env.ADMIN_USERNAMES;
+      } else {
+        process.env.ADMIN_USERNAMES = previousAdminUsernames;
+      }
+      purgeAppModules();
+    }
   });
 
   test("upsert mode updates an existing catalog record", async () => {

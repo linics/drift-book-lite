@@ -10,6 +10,19 @@ function readWorkspaceFile(...segments) {
 }
 
 describe("deployment configuration", () => {
+  test("env templates let cors follow configured frontend addresses", () => {
+    const rootEnv = readWorkspaceFile(".env.example");
+    const backendEnv = readWorkspaceFile("drift-book-lite", "backend", ".env.example");
+
+    expect(rootEnv).toContain("APP_BASE_URL=http://localhost:5174");
+    expect(rootEnv).toContain("ADMIN_APP_BASE_URL=http://localhost:5175");
+    expect(rootEnv).not.toContain("ALLOWED_ORIGINS=");
+
+    expect(backendEnv).toContain('APP_BASE_URL="http://localhost:5174"');
+    expect(backendEnv).toContain('ADMIN_APP_BASE_URL="http://localhost:5175"');
+    expect(backendEnv).not.toContain("ALLOWED_ORIGINS=");
+  });
+
   test("keeps legacy review schema fields for safe db push upgrades", () => {
     const schema = readWorkspaceFile("drift-book-lite", "backend", "prisma", "schema.prisma");
 
@@ -20,6 +33,9 @@ describe("deployment configuration", () => {
   test("root compose exposes all bundled default resource directories", () => {
     const compose = readWorkspaceFile("docker-compose.yml");
 
+    expect(compose).toContain("APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5174}");
+    expect(compose).toContain("ADMIN_APP_BASE_URL: ${ADMIN_APP_BASE_URL:-http://localhost:5175}");
+    expect(compose).not.toContain("ALLOWED_ORIGINS:");
     expect(compose).toContain("DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets");
     expect(compose).toContain("DEFAULT_SENSITIVE_WORDS_DIR: /app/resources/default-sensitive-words");
     expect(compose).toContain(
@@ -39,6 +55,9 @@ describe("deployment configuration", () => {
   test("nested compose exposes bundled resources from the project directory", () => {
     const compose = readWorkspaceFile("drift-book-lite", "docker-compose.yml");
 
+    expect(compose).toContain("APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5174}");
+    expect(compose).toContain("ADMIN_APP_BASE_URL: ${ADMIN_APP_BASE_URL:-http://localhost:5175}");
+    expect(compose).not.toContain("ALLOWED_ORIGINS:");
     expect(compose).toContain("DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets");
     expect(compose).toContain("DEFAULT_SENSITIVE_WORDS_DIR: /app/resources/default-sensitive-words");
     expect(compose).toContain(

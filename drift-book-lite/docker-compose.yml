@@ -11,7 +11,7 @@ services:
       ADMIN_USERNAMES: ${ADMIN_USERNAMES:-admin1}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5174}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5174,http://localhost:5175}
+      ADMIN_APP_BASE_URL: ${ADMIN_APP_BASE_URL:-http://localhost:5175}
       DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets
       DEFAULT_SENSITIVE_WORDS_DIR: /app/resources/default-sensitive-words
       STUDENT_ROSTER_PATH: /app/resources/student-roster/2025学年学生信息.xls

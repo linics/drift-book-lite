@@ -21,6 +21,7 @@
 最容易踩坑的一点：
 
 - 如果 `FRONTEND_API_BASE_URL` 和 `ADMIN_FRONTEND_API_BASE_URL` 还写着 `http://localhost:8080/api`，那么只有部署机器自己能正常调用后端，局域网其他设备打开页面后会请求它们自己的 `localhost:8080`，结果就是页面能打开，但数据加载失败。
+- 如果 `APP_BASE_URL` 和 `ADMIN_APP_BASE_URL` 还写着 `http://localhost:5174/5175`，后端默认 CORS 也会继续把局域网访问当成跨域拒绝，结果就是页面能打开，但登录、搜索、提交留言都会失败。
 
 ## 先确认一件事：学生留言数据不会随意丢
 
@@ -334,6 +335,8 @@ JWT_SECRET=please-change-this-to-a-long-random-string
 ADMIN_USERNAMES=admin1,admin2,admin3
 ADMIN_PASSWORD=please-change-this-password
 
+APP_BASE_URL=http://192.168.1.50:5174
+ADMIN_APP_BASE_URL=http://192.168.1.50:5175
 FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 ADMIN_FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 ```
@@ -345,6 +348,7 @@ ADMIN_FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 - `ADMIN_FRONTEND_PORT`：管理端页面端口
 - `JWT_SECRET`：必须改成你自己的随机字符串
 - `ADMIN_USERNAMES` / `ADMIN_PASSWORD`：初始管理员账号列表和默认密码
+- `APP_BASE_URL` / `ADMIN_APP_BASE_URL`：学生端、管理端页面本身的访问地址，后端默认会用它们生成允许的 CORS 来源
 - `FRONTEND_API_BASE_URL`：学生端页面里写死的 API 地址，局域网部署时必须写成部署机 IP
 - `ADMIN_FRONTEND_API_BASE_URL`：管理端页面里写死的 API 地址，局域网部署时也必须写成部署机 IP
 
@@ -520,7 +524,7 @@ Docker Compose 会创建两个卷：
 2. 恢复 `.env`
 3. 恢复数据库卷和上传卷
 4. 确认局域网 IP 是否变化
-5. 如 IP 变化，修改 `FRONTEND_API_BASE_URL` 和 `ADMIN_FRONTEND_API_BASE_URL`
+5. 如 IP 变化，修改 `APP_BASE_URL`、`ADMIN_APP_BASE_URL`、`FRONTEND_API_BASE_URL` 和 `ADMIN_FRONTEND_API_BASE_URL`
 6. 执行：
 
 ```bash
@@ -540,7 +544,9 @@ docker compose up --build -d
 1. 备份数据库和上传目录
 2. 备份 `.env`
 3. 更新代码
-4. 如果部署机 IP 变化，修改 `.env` 中这两个变量：
+4. 如果部署机 IP 变化，修改 `.env` 中这四个变量：
+   - `APP_BASE_URL`
+   - `ADMIN_APP_BASE_URL`
    - `FRONTEND_API_BASE_URL`
    - `ADMIN_FRONTEND_API_BASE_URL`
 5. 重新执行：
@@ -561,6 +567,8 @@ docker compose up --build -d
 | `JWT_SECRET` | JWT 签名密钥 | `replace-with-random-secret` |
 | `ADMIN_USERNAMES` | 管理员用户名列表 | `admin1,admin2,admin3` |
 | `ADMIN_PASSWORD` | 管理员密码 | `replace-with-strong-password` |
+| `APP_BASE_URL` | 学生端页面地址 | `http://192.168.1.50:5174` |
+| `ADMIN_APP_BASE_URL` | 管理端页面地址 | `http://192.168.1.50:5175` |
 | `FRONTEND_API_BASE_URL` | 学生端构建时写入的 API 地址 | `http://192.168.1.50:8080/api` |
 | `ADMIN_FRONTEND_API_BASE_URL` | 管理端构建时写入的 API 地址 | `http://192.168.1.50:8080/api` |
 
@@ -576,6 +584,7 @@ docker compose up --build -d
 | `ADMIN_USERNAMES` | 管理员用户名列表 | `admin1,admin2,admin3` |
 | `ADMIN_PASSWORD` | 管理员密码 | `change-this-password` |
 | `APP_BASE_URL` | 学生端地址 | `http://localhost:5174` |
+| `ADMIN_APP_BASE_URL` | 管理端地址 | `http://localhost:5175` |
 | `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | `drift-book-lite/resources/default-site-assets` |
 | `DEFAULT_SENSITIVE_WORDS_DIR` | 默认敏感词目录路径 | `drift-book-lite/resources/default-sensitive-words` |
 
@@ -684,6 +693,8 @@ docker compose up --build -d
 ```env
 FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 ADMIN_FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
+APP_BASE_URL=http://192.168.1.50:5174
+ADMIN_APP_BASE_URL=http://192.168.1.50:5175
 ```
 
 修改后重新构建：

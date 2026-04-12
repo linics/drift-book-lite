@@ -92,6 +92,7 @@ JWT_SECRET="replace-with-a-long-random-string"
 ADMIN_USERNAMES="admin1,admin2,admin3"
 ADMIN_PASSWORD="replace-with-a-strong-password"
 APP_BASE_URL="http://10.11.23.45:5174"
+ADMIN_APP_BASE_URL="http://10.11.23.45:5175"
 DEFAULT_SITE_ASSETS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-site-assets"
 DEFAULT_SENSITIVE_WORDS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-sensitive-words"
 ```
@@ -103,6 +104,7 @@ DEFAULT_SENSITIVE_WORDS_DIR="D:/your-path/library-management-system/drift-book-l
 - `JWT_SECRET`：必须改成自己的随机字符串
 - `ADMIN_PASSWORD`：必须改掉默认密码
 - `APP_BASE_URL`：学生端访问地址
+- `ADMIN_APP_BASE_URL`：管理端访问地址，后端默认会把它加入允许的 CORS 来源
 - `DEFAULT_SITE_ASSETS_DIR`：指向 `drift-book-lite/resources/default-site-assets`
 - `DEFAULT_SENSITIVE_WORDS_DIR`：指向 `drift-book-lite/resources/default-sensitive-words`
 

@@ -32,6 +32,7 @@ module.exports = {
   adminUsernames: requiredList("ADMIN_USERNAMES", "admin1,admin2,admin3"),
   adminPassword: required("ADMIN_PASSWORD", "change-this-password"),
   appBaseUrl: process.env.APP_BASE_URL || "http://localhost:5174",
+  adminAppBaseUrl: process.env.ADMIN_APP_BASE_URL || "http://localhost:5175",
   defaultSiteAssetsDir:
     process.env.DEFAULT_SITE_ASSETS_DIR ||
     path.resolve(projectRoot, "resources", "default-site-assets"),
