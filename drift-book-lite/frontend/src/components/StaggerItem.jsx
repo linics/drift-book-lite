@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 
+const MotionDiv = motion.div;
+
 export function StaggerItem({ index = 0, children, className }) {
   return (
-    <motion.div
+    <MotionDiv
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
@@ -10,6 +12,6 @@ export function StaggerItem({ index = 0, children, className }) {
       className={className}
     >
       {children}
-    </motion.div>
+    </MotionDiv>
   );
 }
