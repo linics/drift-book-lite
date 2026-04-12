@@ -5,9 +5,10 @@ export function BookCard({ book }) {
   return (
     <Link
       to={`/books/${book.id}`}
-      className="group rounded-[2rem] border border-stone-200/80 bg-white/80 p-6 shadow-[0_18px_60px_rgba(47,33,15,0.08)] transition hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(47,33,15,0.12)]"
+      className="group block rounded-[2rem] border border-stone-200/80 bg-white/80 p-6 shadow-[0_18px_60px_rgba(47,33,15,0.08)] transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_24px_70px_rgba(47,33,15,0.12)]"
     >
-      <h3 className="mt-5 font-display text-3xl text-stone-900 transition group-hover:text-[#8b2f2a]">
+      <p className="text-xs uppercase tracking-[0.28em] text-stone-400">{book.publisher}</p>
+      <h3 className="mt-2 font-display text-3xl text-stone-900 transition group-hover:text-primary">
         {book.title}
       </h3>
       <p className="mt-3 text-sm leading-7 text-stone-600">{book.author}</p>

@@ -12,6 +12,8 @@ import { SearchForm } from "../components/SearchForm.jsx";
 import { LoadingPane } from "../components/LoadingPane.jsx";
 import { ErrorPane } from "../components/ErrorPane.jsx";
 import { PublicShell } from "../components/PublicShell.jsx";
+import { AnimatedPage } from "../components/AnimatedPage.jsx";
+import { StaggerItem } from "../components/StaggerItem.jsx";
 
 const MotionImage = motion.img;
 const MotionDiv = motion.div;
@@ -67,18 +69,19 @@ export function HomePage() {
 
   return (
     <PublicShell assets={assets}>
+      <AnimatedPage>
       <main className="flex flex-1 flex-col gap-10">
         <section
           data-testid="homepage-hero"
           className="grid gap-6 xl:min-h-[38rem] xl:grid-cols-[0.92fr_1.08fr]"
         >
           <section className="paper-panel relative flex h-full flex-col overflow-hidden rounded-[2.8rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-12">
-            <div className="absolute left-0 top-0 h-52 w-52 rounded-full bg-[#8b2f2a]/10 blur-3xl" />
+            <div className="absolute left-0 top-0 h-52 w-52 rounded-full bg-primary/10 blur-3xl" />
             <div className="relative z-10 flex h-full flex-col">
               <Badge tone="accent">馆内阅读活动</Badge>
               <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.05] text-stone-900 md:text-7xl">
                 让这本书，
-                <span className="text-[#8b2f2a]"> 继续流向下一位读者。</span>
+                <span className="text-primary"> 继续流向下一位读者。</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-8 text-stone-600 md:text-lg">
                 在"一本书的漂流"里，寻找一本书，留下你的那一层，看见阅读真正流动起来。
@@ -173,23 +176,23 @@ export function HomePage() {
               className="order-1 flex h-full flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-stone-200/80 bg-white/82 p-5 lg:order-none lg:col-start-1 lg:row-start-1"
             >
               <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Activity Rank</p>
+                <p className="text-xs uppercase tracking-[0.34em] text-primary">Activity Rank</p>
                 <h2 className="mt-3 font-display text-3xl text-stone-900">留言量排行榜</h2>
                 <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600">
                   找一本正在流动的书，接上属于你的那一层。
                 </p>
               </div>
-              <span className="rounded-full bg-[#8b2f2a]/8 px-3 py-2 text-xs uppercase tracking-[0.24em] text-[#8b2f2a]">
+              <span className="rounded-full bg-primary/8 px-3 py-2 text-xs uppercase tracking-[0.24em] text-primary">
                 当前展示 {activityPreview.length} 条
               </span>
             </div>
 
             <div
               data-testid="featured-ranking-heading"
-              className="order-7 flex h-full flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-stone-200/80 bg-[#fffaf1]/90 p-5 lg:order-none lg:col-start-2 lg:row-start-1"
+              className="order-7 flex h-full flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-stone-200/80 bg-surface-warm/90 p-5 lg:order-none lg:col-start-2 lg:row-start-1"
             >
               <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Featured Lines</p>
+                <p className="text-xs uppercase tracking-[0.34em] text-primary">Featured Lines</p>
                 <h2 className="mt-3 font-display text-3xl text-stone-900">管理员精选留言</h2>
                 <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600">
                   先读几段有代表性的接龙片段，再决定从哪本书进入。
@@ -201,7 +204,7 @@ export function HomePage() {
             </div>
 
             {activityPreview.length === 0 ? (
-              <div className="order-2 rounded-[1.6rem] border border-dashed border-stone-300 bg-[#faf6ef] p-4 text-sm leading-7 text-stone-500 lg:order-none lg:col-start-1 lg:row-span-5 lg:row-start-2">
+              <div className="order-2 rounded-[1.6rem] border border-dashed border-stone-300 bg-surface p-4 text-sm leading-7 text-stone-500 lg:order-none lg:col-start-1 lg:row-span-5 lg:row-start-2">
                 当前还没有公开接龙，欢迎成为第一位留言的读者。
               </div>
             ) : null}
@@ -224,13 +227,13 @@ export function HomePage() {
                     data-testid="activity-ranking-link"
                     to={`/books/${book.id}`}
                     className={clsx(
-                      "group flex h-full min-h-[8.75rem] items-center justify-between gap-4 overflow-hidden rounded-[1.6rem] border border-stone-200 bg-[#faf6ef] px-4 py-4 transition hover:border-[#8b2f2a]/35 hover:bg-white lg:order-none lg:col-start-1 lg:h-36",
+                      "group flex h-full min-h-[8.75rem] items-center justify-between gap-4 overflow-hidden rounded-[1.6rem] border border-stone-200 bg-surface px-4 py-4 transition-all duration-200 hover:translate-x-1 hover:border-primary/35 hover:bg-white lg:order-none lg:col-start-1 lg:h-36",
                       rankingRowClasses[index],
                       activityOrderClasses[index]
                     )}
                   >
                     <div className="flex min-w-0 items-center gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.1rem] bg-white text-sm font-semibold text-[#8b2f2a] shadow-[0_10px_30px_rgba(47,33,15,0.06)]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.1rem] bg-white text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(47,33,15,0.06)]">
                         {String(index + 1).padStart(2, "0")}
                       </div>
                       <div className="min-w-0">
@@ -238,7 +241,7 @@ export function HomePage() {
                           热门接龙书页
                         </p>
                         <h3
-                          className="mt-1 text-base font-semibold text-stone-900 transition group-hover:text-[#8b2f2a]"
+                          className="mt-1 text-base font-semibold text-stone-900 transition group-hover:text-primary"
                           style={lineClampStyle(2)}
                         >
                           {book.title}
@@ -246,7 +249,7 @@ export function HomePage() {
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
-                      <div className="font-display text-3xl text-[#8b2f2a]">{book.messageCount}</div>
+                      <div className="font-display text-3xl text-primary">{book.messageCount}</div>
                       <p className="text-xs uppercase tracking-[0.18em] text-stone-500">层留言</p>
                     </div>
                   </Link>
@@ -258,7 +261,7 @@ export function HomePage() {
                     data-testid="featured-ranking-link"
                     to={`/books/${review.bookId}#review-${review.id}`}
                     className={clsx(
-                      "group flex h-full min-h-[8.75rem] flex-col justify-between overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white/80 p-4 transition hover:border-[#8b2f2a]/35 hover:bg-white lg:order-none lg:col-start-2 lg:h-36",
+                      "group flex h-full min-h-[8.75rem] flex-col justify-between overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white/80 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-white lg:order-none lg:col-start-2 lg:h-36",
                       rankingRowClasses[index],
                       featuredOrderClasses[index]
                     )}
@@ -271,7 +274,7 @@ export function HomePage() {
                         ) : null}
                       </div>
                       <h3
-                        className="mt-3 text-base font-semibold text-stone-900 transition group-hover:text-[#8b2f2a]"
+                        className="mt-3 text-base font-semibold text-stone-900 transition group-hover:text-primary"
                         style={lineClampStyle(1)}
                       >
                         {review.bookTitle}
@@ -305,11 +308,11 @@ export function HomePage() {
           />
           <div className="grid gap-4">
             {(assets.processContent || []).map((step, index) => (
+              <StaggerItem key={step.id} index={index}>
               <div
-                key={step.id}
-                className="flex gap-4 rounded-[1.8rem] border border-stone-200 bg-[#faf6ef] p-5"
+                className="flex gap-4 rounded-[1.8rem] border border-stone-200 bg-surface p-5"
               >
-                <div className="font-display text-3xl text-[#8b2f2a]">
+                <div className="font-display text-3xl text-primary">
                   {String(index + 1).padStart(2, "0")}
                 </div>
                 <div>
@@ -317,10 +320,12 @@ export function HomePage() {
                   <p className="mt-2 text-sm leading-6 text-stone-600">{step.description}</p>
                 </div>
               </div>
+              </StaggerItem>
             ))}
           </div>
         </section>
       </main>
+      </AnimatedPage>
     </PublicShell>
   );
 }

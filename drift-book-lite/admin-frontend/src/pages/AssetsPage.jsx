@@ -108,7 +108,7 @@ export function AssetsPage({ token, onLogout }) {
           <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="max-w-3xl">
-                <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Default Assets</p>
+                <p className="text-xs uppercase tracking-[0.34em] text-primary">Default Assets</p>
                 <h3 className="mt-2 font-display text-3xl text-stone-900">默认首页图片</h3>
                 <p className="mt-3 text-sm leading-7 text-stone-600">
                   重新载入默认目录中的首页图片。
@@ -125,7 +125,7 @@ export function AssetsPage({ token, onLogout }) {
             </div>
             <div className="mt-6 rounded-[1.8rem] border border-stone-200 bg-white/85 p-5">
               <p className="text-xs uppercase tracking-[0.28em] text-stone-500">当前默认目录</p>
-              <p className="mt-3 break-all rounded-2xl bg-[#faf6ef] px-4 py-3 font-mono text-xs text-stone-700">
+              <p className="mt-3 break-all rounded-2xl bg-surface px-4 py-3 font-mono text-xs text-stone-700">
                 {assets.defaultSiteAssetsDir || "未配置"}
               </p>
               <p className="mt-3 text-sm leading-6 text-stone-500">
@@ -137,7 +137,7 @@ export function AssetsPage({ token, onLogout }) {
           <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Carousel</p>
+                <p className="text-xs uppercase tracking-[0.34em] text-primary">Carousel</p>
                 <h3 className="mt-2 font-display text-3xl text-stone-900">校园轮播图</h3>
                 <p className="mt-3 text-sm leading-7 text-stone-600">
                   这里追加的是当前生效中的轮播图。

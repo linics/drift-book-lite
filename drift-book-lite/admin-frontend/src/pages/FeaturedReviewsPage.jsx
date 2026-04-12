@@ -100,7 +100,7 @@ export function FeaturedReviewsPage({ token, onLogout }) {
         <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Selected</p>
+              <p className="text-xs uppercase tracking-[0.34em] text-primary">Selected</p>
               <h3 className="mt-2 font-display text-3xl text-stone-900">当前精选</h3>
             </div>
             <PrimaryButton type="button" onClick={handleSave} disabled={saving}>
@@ -156,7 +156,7 @@ export function FeaturedReviewsPage({ token, onLogout }) {
         </section>
 
         <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-          <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Approved</p>
+          <p className="text-xs uppercase tracking-[0.34em] text-primary">Approved</p>
           <h3 className="mt-2 font-display text-3xl text-stone-900">可选公开留言</h3>
           <div className="mt-6 space-y-4">
             {availableReviews.length === 0 ? (

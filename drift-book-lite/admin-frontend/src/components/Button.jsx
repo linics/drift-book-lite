@@ -5,7 +5,7 @@ export function PrimaryButton({ className, children, ...props }) {
     <button
       {...props}
       className={clsx(
-        "inline-flex items-center justify-center rounded-full bg-[#8b2f2a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#6d221f] disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(139,47,42,0.22)] transition-all duration-150 hover:bg-primary-dark hover:shadow-[0_6px_20px_rgba(139,47,42,0.32)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
     >
@@ -19,7 +19,7 @@ export function SecondaryButton({ className, children, ...props }) {
     <button
       {...props}
       className={clsx(
-        "inline-flex items-center justify-center rounded-full border border-stone-300 bg-white/80 px-5 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-400 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center rounded-full border border-stone-300 bg-white/80 px-5 py-3 text-sm font-medium text-stone-700 transition-all duration-150 hover:border-stone-400 hover:bg-white hover:shadow-sm active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
     >

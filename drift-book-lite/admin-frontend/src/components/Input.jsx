@@ -6,7 +6,7 @@ export function TextInput(props) {
       {...props}
       className={clsx(
         "w-full rounded-2xl border border-stone-300/70 bg-white/90 px-4 py-3 text-sm text-stone-900 outline-none transition",
-        "placeholder:text-stone-400 focus:border-[#8b2f2a] focus:ring-2 focus:ring-[#8b2f2a]/15",
+        "placeholder:text-stone-400 focus:border-primary focus:ring-2 focus:ring-primary/15",
         props.className
       )}
     />
@@ -19,7 +19,7 @@ export function TextArea(props) {
       {...props}
       className={clsx(
         "w-full rounded-3xl border border-stone-300/70 bg-white/90 px-4 py-3 text-sm leading-7 text-stone-900 outline-none transition",
-        "placeholder:text-stone-400 focus:border-[#8b2f2a] focus:ring-2 focus:ring-[#8b2f2a]/15",
+        "placeholder:text-stone-400 focus:border-primary focus:ring-2 focus:ring-primary/15",
         props.className
       )}
     />
@@ -32,7 +32,7 @@ export function SelectInput({ className, ...props }) {
       {...props}
       className={clsx(
         "w-full rounded-2xl border border-stone-300/70 bg-white/90 px-4 py-3 text-sm text-stone-900 outline-none transition",
-        "focus:border-[#8b2f2a] focus:ring-2 focus:ring-[#8b2f2a]/15",
+        "focus:border-primary focus:ring-2 focus:ring-primary/15",
         className
       )}
     />

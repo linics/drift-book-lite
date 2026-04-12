@@ -28,10 +28,10 @@ export function AdminLayout({ title, description, onLogout, children }) {
                 end
                 className={({ isActive }) =>
                   clsx(
-                    "group relative block overflow-hidden rounded-[1.35rem] border px-4 py-3 text-sm transition",
+                    "group relative block overflow-hidden rounded-[1.35rem] border px-4 py-3 text-sm transition-all duration-150",
                     isActive
                       ? "border-[#d7b58c]/35 bg-white/8 text-[#f8efdf] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                      : "border-transparent text-stone-300 hover:border-white/10 hover:bg-white/6 hover:text-[#f3e7d5]"
+                      : "border-transparent text-stone-300 hover:translate-x-0.5 hover:border-white/10 hover:bg-white/6 hover:text-[#f3e7d5]"
                   )
                 }
               >
@@ -62,7 +62,7 @@ export function AdminLayout({ title, description, onLogout, children }) {
 
         <div className="space-y-6">
           <header className="rounded-[2.4rem] border border-stone-200/70 bg-white/80 p-8 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-            <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Admin Panel</p>
+            <p className="text-xs uppercase tracking-[0.34em] text-primary">Admin Panel</p>
             <h2 className="mt-3 font-display text-4xl text-stone-900">{title}</h2>
             {description ? (
               <p className="mt-4 max-w-3xl text-sm leading-7 text-stone-600">{description}</p>

@@ -1,7 +1,7 @@
 export function SectionHeading({ eyebrow, title, description }) {
   return (
     <div className="max-w-2xl">
-      <p className="text-xs uppercase tracking-[0.38em] text-[#8b2f2a]">{eyebrow}</p>
+      <p className="text-xs uppercase tracking-[0.38em] text-primary">{eyebrow}</p>
       <h2 className="mt-3 font-display text-3xl leading-tight text-stone-900 md:text-5xl">
         {title}
       </h2>

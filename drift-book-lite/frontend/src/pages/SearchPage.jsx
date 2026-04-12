@@ -9,6 +9,8 @@ import { SecondaryButton } from "../components/Button.jsx";
 import { LoadingPane } from "../components/LoadingPane.jsx";
 import { ErrorPane } from "../components/ErrorPane.jsx";
 import { PublicShell } from "../components/PublicShell.jsx";
+import { AnimatedPage } from "../components/AnimatedPage.jsx";
+import { StaggerItem } from "../components/StaggerItem.jsx";
 
 export function SearchPage() {
   const navigate = useNavigate();
@@ -60,6 +62,7 @@ export function SearchPage() {
 
   return (
     <PublicShell assets={assets}>
+      <AnimatedPage>
       <section className="paper-panel rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-10">
         <SectionHeading
           eyebrow="Search Books"
@@ -90,7 +93,7 @@ export function SearchPage() {
           <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">
+                <p className="text-xs uppercase tracking-[0.34em] text-primary">
                   Search Result
                 </p>
                 <h2 className="mt-2 font-display text-4xl text-stone-900">
@@ -111,14 +114,17 @@ export function SearchPage() {
               </div>
             ) : (
               <div className="grid gap-5 md:grid-cols-2">
-                {visibleBooks.map((book) => (
-                  <BookCard key={book.id} book={book} />
+                {visibleBooks.map((book, index) => (
+                  <StaggerItem key={book.id} index={index} className="h-full">
+                    <BookCard book={book} />
+                  </StaggerItem>
                 ))}
               </div>
             )}
           </div>
         ) : null}
       </section>
+      </AnimatedPage>
     </PublicShell>
   );
 }

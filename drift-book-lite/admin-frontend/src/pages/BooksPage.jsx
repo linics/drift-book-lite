@@ -282,7 +282,7 @@ export function BooksPage({ token, onLogout }) {
         <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Books</p>
+              <p className="text-xs uppercase tracking-[0.34em] text-primary">Books</p>
               <h3 className="mt-2 font-display text-4xl text-stone-900">馆藏图书</h3>
             </div>
             <div className="flex flex-col gap-3 md:flex-row md:items-end">
@@ -373,7 +373,7 @@ export function BooksPage({ token, onLogout }) {
                       setBookError("");
                       setBookSuccess("");
                     }}
-                    className="w-full rounded-[1.8rem] border border-stone-200 bg-white/80 p-5 text-left transition hover:border-[#8b2f2a]/35"
+                    className="w-full rounded-[1.8rem] border border-stone-200 bg-white/80 p-5 text-left transition hover:border-primary/35"
                   >
                     <span className="font-semibold text-stone-900">{book.title}</span>
                     <p className="mt-2 text-sm text-stone-600">{book.author}</p>
@@ -389,7 +389,7 @@ export function BooksPage({ token, onLogout }) {
               )}
             </div>
 
-            <div className="rounded-[1.8rem] border border-stone-200 bg-[#faf6ef] p-5">
+            <div className="rounded-[1.8rem] border border-stone-200 bg-surface p-5">
               <h4 className="font-semibold text-stone-900">
                 {selectedBook ? "编辑图书" : "选择一本图书"}
               </h4>

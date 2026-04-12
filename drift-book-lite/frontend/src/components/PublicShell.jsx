@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { assetUrl } from "../lib/api.js";
+import { Footer } from "./Footer.jsx";
 
 export function PublicShell({ children, assets }) {
   return (
@@ -29,9 +30,28 @@ export function PublicShell({ children, assets }) {
               </Link>
             </div>
           </div>
-          <div className="text-sm text-stone-500">图书馆馆内统一入口</div>
+          <nav className="flex items-center gap-5 text-sm">
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                isActive ? "text-primary font-medium" : "text-stone-500 hover:text-stone-800 transition-colors"
+              }
+            >
+              首页
+            </NavLink>
+            <NavLink
+              to="/search"
+              className={({ isActive }) =>
+                isActive ? "text-primary font-medium" : "text-stone-500 hover:text-stone-800 transition-colors"
+              }
+            >
+              搜索图书
+            </NavLink>
+          </nav>
         </header>
         {children}
+        <Footer />
       </div>
     </div>
   );

@@ -168,7 +168,7 @@ export function SensitiveWordsPage({ token, onLogout }) {
             </p>
             <div className="mt-5 rounded-[1.8rem] border border-stone-200 bg-white/85 p-5">
               <p className="text-xs uppercase tracking-[0.28em] text-stone-500">默认词库目录</p>
-              <p className="mt-3 break-all rounded-2xl bg-[#faf6ef] px-4 py-3 font-mono text-xs text-stone-700">
+              <p className="mt-3 break-all rounded-2xl bg-surface px-4 py-3 font-mono text-xs text-stone-700">
                 {importSummary?.defaultSensitiveWordsDir || "使用后端当前默认目录"}
               </p>
               <p className="mt-3 text-sm leading-6 text-stone-500">

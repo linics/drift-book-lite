@@ -11,6 +11,8 @@ import { SectionHeading } from "../components/SectionHeading.jsx";
 import { LoadingPane } from "../components/LoadingPane.jsx";
 import { ErrorPane } from "../components/ErrorPane.jsx";
 import { PublicShell } from "../components/PublicShell.jsx";
+import { AnimatedPage } from "../components/AnimatedPage.jsx";
+import { StaggerItem } from "../components/StaggerItem.jsx";
 
 export function BookDetailPage() {
   const { bookId } = useParams();
@@ -124,6 +126,7 @@ export function BookDetailPage() {
 
   return (
     <PublicShell assets={assets}>
+      <AnimatedPage>
       <main className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="paper-panel rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-10">
           <Badge tone="accent">单书接龙页</Badge>
@@ -133,14 +136,14 @@ export function BookDetailPage() {
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {detailFields.map(([label, value]) =>
               value ? (
-                <div key={label} className="rounded-[1.8rem] border border-stone-200 bg-[#faf6ef] p-5">
+                <div key={label} className="rounded-[1.8rem] border border-stone-200 bg-surface p-5">
                   <p className="text-xs uppercase tracking-[0.28em] text-stone-500">{label}</p>
                   <p className="mt-3 text-lg font-semibold text-stone-900">{value}</p>
                 </div>
               ) : null
             )}
           </div>
-          <div className="mt-6 rounded-[1.8rem] border border-stone-200 bg-[#faf6ef] p-5">
+          <div className="mt-6 rounded-[1.8rem] border border-stone-200 bg-surface p-5">
             <p className="text-xs uppercase tracking-[0.28em] text-stone-500">条形码列表</p>
             {book.barcodes?.length ? (
               <div className="mt-3 flex flex-wrap gap-3">
@@ -152,8 +155,8 @@ export function BookDetailPage() {
               <p className="mt-3 text-sm text-stone-500">暂无条形码信息</p>
             )}
           </div>
-          <div className="mt-6 rounded-[1.8rem] border border-[#8b2f2a]/10 bg-[#8b2f2a]/5 p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#8b2f2a]">留言规则</p>
+          <div className="mt-6 rounded-[1.8rem] border border-primary/10 bg-primary/5 p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-primary">留言规则</p>
             <p className="mt-3 text-sm leading-7 text-stone-700">
               留言审核通过后会公开显示。
             </p>
@@ -172,13 +175,13 @@ export function BookDetailPage() {
             />
             <div className="mt-8 space-y-5">
               {reviews.length === 0 ? (
-                <div className="rounded-[1.8rem] border border-dashed border-stone-300 bg-[#faf6ef] p-6 text-sm leading-7 text-stone-500">
+                <div className="rounded-[1.8rem] border border-dashed border-stone-300 bg-surface p-6 text-sm leading-7 text-stone-500">
                   这本书还没有公开接龙，欢迎你成为第一位接上去的读者。
                 </div>
               ) : null}
-              {reviews.map((review) => (
+              {reviews.map((review, index) => (
+                <StaggerItem key={review.id} index={index}>
                 <div
-                  key={review.id}
                   id={`review-${review.id}`}
                   className="rounded-[1.8rem] border border-stone-200 bg-white/75 p-5 scroll-mt-28"
                 >
@@ -191,6 +194,7 @@ export function BookDetailPage() {
                   </div>
                   <p className="mt-3 text-sm leading-7 text-stone-700">{review.content}</p>
                 </div>
+                </StaggerItem>
               ))}
             </div>
           </div>
@@ -198,7 +202,7 @@ export function BookDetailPage() {
           <div className="paper-panel rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)]">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#8b2f2a]">Join The Chain</p>
+                <p className="text-xs uppercase tracking-[0.3em] text-primary">Join The Chain</p>
                 <h2 className="mt-2 font-display text-3xl text-stone-900">接上你的这一层</h2>
               </div>
               <Badge tone="accent">审核后公开</Badge>
@@ -257,6 +261,7 @@ export function BookDetailPage() {
           </div>
         </section>
       </main>
+      </AnimatedPage>
     </PublicShell>
   );
 }
