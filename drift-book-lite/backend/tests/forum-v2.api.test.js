@@ -82,6 +82,20 @@ describe("forum v2 api", () => {
     await clearData();
     nextCatalogBookId = 1000;
     app = await createApp();
+    await prisma.studentRoster.upsert({
+      where: { systemId: studentIdentity.systemId },
+      update: {
+        studentName: studentIdentity.studentName,
+        className: studentIdentity.className,
+        idCardSuffix: studentIdentity.idCardSuffix,
+      },
+      create: {
+        systemId: studentIdentity.systemId,
+        studentName: studentIdentity.studentName,
+        className: studentIdentity.className,
+        idCardSuffix: studentIdentity.idCardSuffix,
+      },
+    });
   });
 
   afterAll(async () => {

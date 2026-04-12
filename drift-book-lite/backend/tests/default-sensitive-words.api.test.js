@@ -20,6 +20,23 @@ const studentIdentity = {
   idCardSuffix: "3225",
   className: "高一(01)班",
 };
+
+async function seedStudentRoster() {
+  await prisma.studentRoster.upsert({
+    where: { systemId: studentIdentity.systemId },
+    update: {
+      studentName: studentIdentity.studentName,
+      className: studentIdentity.className,
+      idCardSuffix: studentIdentity.idCardSuffix,
+    },
+    create: {
+      systemId: studentIdentity.systemId,
+      studentName: studentIdentity.studentName,
+      className: studentIdentity.className,
+      idCardSuffix: studentIdentity.idCardSuffix,
+    },
+  });
+}
 const bundledDefaultSensitiveWordsDir = path.resolve(
   __dirname,
   "..",
@@ -198,6 +215,7 @@ describe("default sensitive words import", () => {
       writeFixtureFile(defaultSensitiveWordsDir, "02-色情词库.txt", "色情网\n色情网\n成人色情网\n");
 
       const app = await createAppWithDefaultSensitiveWordsDir(defaultSensitiveWordsDir);
+      await seedStudentRoster();
       const adminToken = await loginAs(app);
       const book = await importSingleBook(app, adminToken, "默认词库命中");
 
@@ -242,6 +260,7 @@ describe("default sensitive words import", () => {
       writeFixtureFile(defaultSensitiveWordsDir, "04-非法网址.txt", "翻墙\n机场推荐\n");
 
       const app = await createAppWithDefaultSensitiveWordsDir(defaultSensitiveWordsDir);
+      await seedStudentRoster();
       const adminToken = await loginAs(app);
       const book = await importSingleBook(app, adminToken, "共产党宣言");
 
@@ -303,6 +322,7 @@ describe("default sensitive words import", () => {
     const app = await createAppWithDefaultSensitiveWordsDir(
       bundledDefaultSensitiveWordsDir
     );
+    await seedStudentRoster();
     const adminToken = await loginAs(app);
     const book = await importSingleBook(app, adminToken, "七类命中");
 
