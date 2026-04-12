@@ -14,6 +14,7 @@ export function ReviewsPage({ token, onLogout }) {
   const [drafts, setDrafts] = useState({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   async function loadReviews(nextStatus = status) {
     try {
@@ -85,11 +86,43 @@ export function ReviewsPage({ token, onLogout }) {
     }
   }
 
+  async function handleExport() {
+    setExporting(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.get("/admin/reviews/export", {
+        headers: authHeaders(token),
+        responseType: "blob",
+      });
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `reviews-${Date.now()}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      setSuccess("评论 CSV 已开始下载。");
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "评论导出失败"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <AdminLayout
       onLogout={onLogout}
       title="留言审核"
-      description="审核学生提交的接龙留言，查看实名信息与敏感词命中，决定公开或隐藏。"
+      description="审核留言并处理导出。"
     >
       <StatusMessage error={error} success={success} />
       <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
@@ -105,6 +138,9 @@ export function ReviewsPage({ token, onLogout }) {
               <option value="hidden">已下架</option>
             </SelectInput>
           </Field>
+          <SecondaryButton type="button" onClick={handleExport} disabled={exporting}>
+            {exporting ? "正在导出" : "导出全部 CSV"}
+          </SecondaryButton>
         </div>
         <div className="mt-6 space-y-5">
           {reviews.length === 0 ? (
@@ -134,8 +170,9 @@ export function ReviewsPage({ token, onLogout }) {
                       <>
                         <span>学号：{review.studentIdentity.systemId}</span>
                         <span>姓名：{review.studentIdentity.studentName}</span>
+                        <span>届别：{review.studentIdentity.cohort || "未识别"}</span>
                         <span>班级：{review.studentIdentity.className}</span>
-                        <span>身份证后四位：{review.studentIdentity.idCardSuffix}</span>
+                        <span>身份证后四位：{review.studentIdentity.idCardSuffix || "未提供"}</span>
                       </>
                     ) : (
                       <span>来源：历史旧评语</span>

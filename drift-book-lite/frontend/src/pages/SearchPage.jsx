@@ -14,41 +14,41 @@ export function SearchPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
+  const hasQuery = Boolean(query.trim());
   const { assets, error: assetError } = useSiteAssets();
   const [books, setBooks] = useState([]);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasQuery);
+  const visibleBooks = hasQuery ? books : [];
 
   useEffect(() => {
-    if (!query.trim()) {
-      setBooks([]);
-      setLoading(false);
-      return;
-    }
+    if (!hasQuery) return undefined;
 
     let active = true;
-    setLoading(true);
-    setError("");
+    async function loadBooks() {
+      setLoading(true);
+      setError("");
 
-    api
-      .get("/books/search", { params: { q: query } })
-      .then((response) => {
+      try {
+        const response = await api.get("/books/search", { params: { q: query } });
         if (!active) return;
         setBooks(response.data.books);
-      })
-      .catch((requestError) => {
+      } catch (requestError) {
         if (!active) return;
         setError(requestError.response?.data?.message || "图书搜索失败");
-      })
-      .finally(() => {
-        if (!active) return;
-        setLoading(false);
-      });
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadBooks();
 
     return () => {
       active = false;
     };
-  }, [query]);
+  }, [hasQuery, query]);
 
   if (assetError) {
     return (
@@ -74,8 +74,8 @@ export function SearchPage() {
       </section>
 
       <section className="mt-8">
-        {loading ? <LoadingPane label="正在搜索图书" /> : null}
-        {!loading && error ? (
+        {hasQuery && loading ? <LoadingPane label="正在搜索图书" /> : null}
+        {hasQuery && !loading && error ? (
           <ErrorPane
             title="搜索失败"
             message={error}
@@ -86,7 +86,7 @@ export function SearchPage() {
             }
           />
         ) : null}
-        {!loading && !error ? (
+        {(!hasQuery || !loading) && !error ? (
           <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -94,10 +94,10 @@ export function SearchPage() {
                   Search Result
                 </p>
                 <h2 className="mt-2 font-display text-4xl text-stone-900">
-                  共找到 {books.length} 本相关图书
+                  共找到 {visibleBooks.length} 本相关图书
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-stone-600">
-                  当前关键词：{query || "未输入"}
+                  当前关键词：{hasQuery ? query : "未输入"}
                 </p>
               </div>
               <Link to="/">
@@ -105,13 +105,13 @@ export function SearchPage() {
               </Link>
             </div>
 
-            {books.length === 0 ? (
+            {visibleBooks.length === 0 ? (
               <div className="paper-panel rounded-[2rem] p-8 text-sm leading-7 text-stone-600 shadow-[0_24px_70px_rgba(47,33,15,0.08)]">
                 未找到相关图书，请尝试更换关键词，或回到首页重新搜索。
               </div>
             ) : (
               <div className="grid gap-5 md:grid-cols-2">
-                {books.map((book) => (
+                {visibleBooks.map((book) => (
                   <BookCard key={book.id} book={book} />
                 ))}
               </div>

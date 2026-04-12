@@ -87,7 +87,7 @@ describe("drift book lite api", () => {
     const carouselRes = await request(app)
       .post("/api/admin/assets/carousel")
       .set("Authorization", `Bearer ${adminToken}`)
-      .attach("file", path.join(siteAssetFixtureDir, "carousel-01.jpg"))
+      .attach("file", path.join(siteAssetFixtureDir, "carousel-03.jpg"))
       .field("label", "新增轮播");
     expect(carouselRes.status).toBe(201);
     expect(carouselRes.body.asset.label).toBe("新增轮播");

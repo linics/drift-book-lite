@@ -5,7 +5,16 @@ const { defaultSiteAssetsDir, uploadsDir } = require("../lib/env");
 const { ensureDir, normalizePublicPath } = require("../utils/paths");
 const { HttpError } = require("../utils/httpError");
 
-const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"]);
+const IMAGE_EXTENSIONS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".gif",
+  ".avif",
+  ".bmp",
+  ".svg",
+]);
 
 const defaultProcessContent = [
   {
@@ -128,12 +137,6 @@ function isLogoFilename(filename) {
   return /^logo\.[a-z0-9]+$/i.test(filename);
 }
 
-function getCarouselSequence(filename) {
-  const match = /^carousel-(\d+)\.[a-z0-9]+$/i.exec(filename);
-  if (!match) return null;
-  return Number(match[1]);
-}
-
 function loadDefaultSiteAssetFiles({ requireDirectory = false } = {}) {
   if (!fs.existsSync(defaultSiteAssetsDir)) {
     if (requireDirectory) {
@@ -152,11 +155,8 @@ function loadDefaultSiteAssetFiles({ requireDirectory = false } = {}) {
 
   const logoFilename = files.find((name) => isLogoFilename(name)) || null;
   const carouselFiles = files
-    .filter((name) => getCarouselSequence(name) !== null)
-    .sort((left, right) => {
-      const sequenceDiff = getCarouselSequence(left) - getCarouselSequence(right);
-      return sequenceDiff || left.localeCompare(right, "zh-CN");
-    })
+    .filter((name) => !isLogoFilename(name))
+    .sort((left, right) => left.localeCompare(right, "zh-CN"))
     .map((name) => ({
       name,
       sourcePath: path.join(defaultSiteAssetsDir, name),

@@ -72,7 +72,7 @@ describe("default site assets bootstrap", () => {
     await prisma.$disconnect();
   });
 
-  test("fills missing homepage images from the default asset directory and ignores unrelated files", async () => {
+  test("fills missing homepage images from all non-logo image files and ignores hidden or non-image files", async () => {
     await clearData();
 
     const defaultSiteAssetsDir = fs.mkdtempSync(
@@ -81,9 +81,10 @@ describe("default site assets bootstrap", () => {
 
     try {
       writeFixtureFile(defaultSiteAssetsDir, "logo.png");
-      writeFixtureFile(defaultSiteAssetsDir, "carousel-02.jpg");
-      writeFixtureFile(defaultSiteAssetsDir, "carousel-01.jpg");
+      writeFixtureFile(defaultSiteAssetsDir, "banner.webp");
+      writeFixtureFile(defaultSiteAssetsDir, "cover.gif");
       writeFixtureFile(defaultSiteAssetsDir, "poster.jpg");
+      writeFixtureFile(defaultSiteAssetsDir, "readme.txt");
       writeFixtureFile(defaultSiteAssetsDir, ".hidden.jpg");
 
       const app = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
@@ -91,11 +92,19 @@ describe("default site assets bootstrap", () => {
 
       expect(response.status).toBe(200);
       expect(response.body.schoolLogoPath).toContain("/uploads/site-assets/school-logo");
-      expect(response.body.carouselImages).toHaveLength(2);
+      expect(response.body.carouselImages).toHaveLength(3);
       expect(response.body.carouselImages.map((image) => image.label)).toEqual([
         "校园轮播 1",
         "校园轮播 2",
+        "校园轮播 3",
       ]);
+      expect(response.body.carouselImages.map((image) => image.path)).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(".gif"),
+          expect.stringContaining(".jpg"),
+          expect.stringContaining(".webp"),
+        ])
+      );
     } finally {
       fs.rmSync(defaultSiteAssetsDir, { recursive: true, force: true });
     }
@@ -127,7 +136,7 @@ describe("default site assets bootstrap", () => {
 
     try {
       writeFixtureFile(defaultSiteAssetsDir, "logo.png");
-      writeFixtureFile(defaultSiteAssetsDir, "carousel-01.jpg");
+      writeFixtureFile(defaultSiteAssetsDir, "banner.svg");
 
       const app = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
       const response = await request(app).get("/api/site-assets");
@@ -155,8 +164,9 @@ describe("default site assets bootstrap", () => {
 
     try {
       writeFixtureFile(defaultSiteAssetsDir, "logo.png");
-      writeFixtureFile(defaultSiteAssetsDir, "carousel-01.jpg");
-      writeFixtureFile(defaultSiteAssetsDir, "carousel-02.jpg");
+      writeFixtureFile(defaultSiteAssetsDir, "poster.jpg");
+      writeFixtureFile(defaultSiteAssetsDir, "banner.webp");
+      writeFixtureFile(defaultSiteAssetsDir, "cover.gif");
 
       const app = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
       const login = await request(app).post("/api/admin/login").send({
@@ -186,10 +196,11 @@ describe("default site assets bootstrap", () => {
 
       expect(response.status).toBe(200);
       expect(response.body.schoolLogoPath).toContain("/uploads/site-assets/school-logo");
-      expect(response.body.carouselImages).toHaveLength(2);
+      expect(response.body.carouselImages).toHaveLength(3);
       expect(response.body.carouselImages.map((image) => image.label)).toEqual([
         "校园轮播 1",
         "校园轮播 2",
+        "校园轮播 3",
       ]);
     } finally {
       fs.rmSync(defaultSiteAssetsDir, { recursive: true, force: true });

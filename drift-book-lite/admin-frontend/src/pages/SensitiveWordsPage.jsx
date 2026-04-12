@@ -156,7 +156,7 @@ export function SensitiveWordsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="敏感词库"
-      description="维护审核辅助词库；命中词条的留言在后台会高亮标出，仍需人工判断。"
+      description="维护审核辅助词库。"
     >
       <StatusMessage error={error} success={success} />
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
@@ -164,9 +164,7 @@ export function SensitiveWordsPage({ token, onLogout }) {
           <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
             <h3 className="font-display text-3xl text-stone-900">导入内置词库</h3>
             <p className="mt-3 text-sm leading-7 text-stone-600">
-              项目仓库内置了中度扩容默认词库，包含广告、色情、涉枪涉爆、非法网址，以及新增的暴恐、
-              补充、贪腐共 7 类。
-              点击后会按归一化结果去重导入，已存在的管理员自定义词条会自动跳过。
+              内置 7 类默认词库，导入时会自动去重并跳过已有词条。
             </p>
             <div className="mt-5 rounded-[1.8rem] border border-stone-200 bg-white/85 p-5">
               <p className="text-xs uppercase tracking-[0.28em] text-stone-500">默认词库目录</p>
@@ -174,16 +172,11 @@ export function SensitiveWordsPage({ token, onLogout }) {
                 {importSummary?.defaultSensitiveWordsDir || "使用后端当前默认目录"}
               </p>
               <p className="mt-3 text-sm leading-6 text-stone-500">
-                内置词库文件随项目一起部署，无需运行时访问网络。
+                词库文件随项目部署。
               </p>
               <p className="mt-3 text-xs leading-6 text-stone-500">
                 默认词库不含政治类、GFW 补充、腾讯/网易大杂包等高误判类别。
               </p>
-              {importSummary?.sourceFiles?.length ? (
-                <p className="mt-3 text-xs leading-6 text-stone-500">
-                  内置文件：{importSummary.sourceFiles.join("、")}
-                </p>
-              ) : null}
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <PrimaryButton

@@ -155,7 +155,7 @@ export function BookDetailPage() {
           <div className="mt-6 rounded-[1.8rem] border border-[#8b2f2a]/10 bg-[#8b2f2a]/5 p-5">
             <p className="text-xs uppercase tracking-[0.28em] text-[#8b2f2a]">留言规则</p>
             <p className="mt-3 text-sm leading-7 text-stone-700">
-              你的留言经审核通过后，将成为这条接龙的下一层。
+              留言审核通过后会公开显示。
             </p>
           </div>
           <div className="mt-8 flex gap-3">
@@ -168,7 +168,7 @@ export function BookDetailPage() {
             <SectionHeading
               eyebrow="Public Thread"
               title="已公开接龙"
-              description="来自同学们的阅读印记，一层一层，记录着这本书的旅程。"
+              description="已通过审核的留言会显示在这里。"
             />
             <div className="mt-8 space-y-5">
               {reviews.length === 0 ? (
@@ -221,12 +221,12 @@ export function BookDetailPage() {
                   placeholder="请输入学籍姓名"
                 />
               </Field>
-              <Field label="身份证后四位" hint="仅用于本次身份校验，不会在前台公开显示。">
+              <Field label="身份证后四位" hint="如系统留存该信息，则用于校验。">
                 <TextInput
                   value={formState.idCardSuffix}
                   onChange={(e) => setFormState((s) => ({ ...s, idCardSuffix: e.target.value.toUpperCase() }))}
                   disabled={submitting}
-                  placeholder="例如 3225"
+                  placeholder="可留空"
                 />
               </Field>
               <Field label="接龙内容" hint="请输入 1 到 500 字的阅读感受或回应。">

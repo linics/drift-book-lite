@@ -61,6 +61,12 @@ export function FeaturedReviewsPage({ token, onLogout }) {
   }
 
   async function handleSave() {
+    if (reviews.length >= 3 && selectedIds.length < 3) {
+      setError("至少保留 3 条精选留言。");
+      setSuccess("");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
@@ -87,7 +93,7 @@ export function FeaturedReviewsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="精选运营"
-      description="从公开留言中选取精选内容，手动调整首页展示顺序。"
+      description="维护首页精选留言顺序。"
     >
       <StatusMessage error={error} success={success} />
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">

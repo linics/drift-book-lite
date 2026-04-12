@@ -7,6 +7,7 @@ const { HttpError } = require("../utils/httpError");
 const {
   buildStudentDisplayName,
   normalizeIdCardSuffix,
+  parseStudentCohort,
 } = require("./studentRoster");
 
 const SEARCH_CANDIDATE_LIMIT = 80;
@@ -669,9 +670,17 @@ function serializeStudentIdentity(review) {
   return {
     systemId: review.studentSystemId,
     studentName: review.studentName,
+    cohort: parseStudentCohort(review.studentSystemId),
     className: review.studentClassName,
     idCardSuffix: review.studentIdCardSuffix,
   };
+}
+
+function getReviewDisplayName(review) {
+  if (review.identityType === "student") {
+    return buildStudentDisplayName(review.studentSystemId, review.studentName) || review.displayName;
+  }
+  return review.displayName;
 }
 
 function serializeReviewForAdmin(review) {
@@ -679,7 +688,7 @@ function serializeReviewForAdmin(review) {
     id: review.id,
     bookId: review.bookId,
     publicBookId: review.groupedBook?.id || review.bookId,
-    displayName: review.displayName,
+    displayName: getReviewDisplayName(review),
     originalContent: review.originalContent,
     finalContent: review.finalContent,
     status: review.status,
@@ -716,7 +725,7 @@ function serializeReviewForPublic(review) {
   return {
     id: review.id,
     sequenceNumber: review.sequenceNumber ?? null,
-    displayName: review.displayName,
+    displayName: getReviewDisplayName(review),
     content: review.finalContent,
     createdAt: review.createdAt,
     reviewedAt: review.reviewedAt,
@@ -728,7 +737,7 @@ function serializeFeaturedReview(review) {
     id: review.id,
     bookId: review.groupedBook?.id || review.bookId,
     bookTitle: review.groupedBook?.title || review.book?.title || "",
-    displayName: review.displayName,
+    displayName: getReviewDisplayName(review),
     content: review.finalContent,
     sequenceNumber: review.sequenceNumber ?? null,
     featuredOrder: review.featuredOrder ?? null,
@@ -822,11 +831,11 @@ async function resolveStudentIdentity({ systemId, studentName, idCardSuffix }) {
     where: { systemId: String(systemId || "").trim() },
   });
 
-  if (
-    !roster ||
-    roster.studentName !== String(studentName || "").trim() ||
-    roster.idCardSuffix !== normalizeIdCardSuffix(idCardSuffix)
-  ) {
+  if (!roster || roster.studentName !== String(studentName || "").trim()) {
+    throw new HttpError(400, "学生身份校验失败");
+  }
+
+  if (roster.idCardSuffix && roster.idCardSuffix !== normalizeIdCardSuffix(idCardSuffix)) {
     throw new HttpError(400, "学生身份校验失败");
   }
 
@@ -1089,7 +1098,7 @@ async function createReview(bookId, payload) {
       content,
     });
     identityData = {
-      displayName: buildStudentDisplayName(roster.className, roster.studentName),
+      displayName: buildStudentDisplayName(roster.systemId, roster.studentName),
       identityType: "student",
       studentRosterId: roster.id,
       studentSystemId: roster.systemId,
@@ -1598,6 +1607,13 @@ async function updateFeaturedReviews(reviewIds) {
     throw new HttpError(400, "精选留言必须来自已公开内容");
   }
 
+  const approvedReviewCount = await prisma.bookReview.count({
+    where: { status: "approved" },
+  });
+  if (approvedReviewCount >= 3 && normalizedIds.length < 3) {
+    throw new HttpError(400, "至少保留 3 条精选留言");
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.bookReview.updateMany({
       where: { isFeatured: true },
@@ -1619,6 +1635,77 @@ async function updateFeaturedReviews(reviewIds) {
   });
 
   return getFeaturedReviews();
+}
+
+function escapeCsvCell(value) {
+  const normalized = String(value ?? "");
+  if (/[",\n]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, "\"\"")}"`;
+  }
+  return normalized;
+}
+
+function formatCsvDate(value) {
+  if (!value) return "";
+  return new Date(value).toISOString();
+}
+
+async function exportAdminReviewsCsv() {
+  const reviews = await prisma.bookReview.findMany({
+    include: { book: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+
+  await annotateReviews(reviews);
+  const serialized = reviews.map(serializeReviewForAdmin);
+  const headers = [
+    "评论ID",
+    "状态",
+    "图书标题",
+    "公开显示名",
+    "学号",
+    "姓名",
+    "届别",
+    "班级",
+    "身份证后四位",
+    "原文",
+    "最终展示文本",
+    "是否精选",
+    "敏感词命中",
+    "命中词",
+    "创建时间",
+    "审核时间",
+    "隐藏时间",
+  ];
+
+  const lines = [
+    headers.map(escapeCsvCell).join(","),
+    ...serialized.map((review) =>
+      [
+        review.id,
+        review.status,
+        review.groupedBook?.title || review.book?.title || "",
+        review.displayName,
+        review.studentIdentity?.systemId || "",
+        review.studentIdentity?.studentName || "",
+        review.studentIdentity?.cohort || "",
+        review.studentIdentity?.className || "",
+        review.studentIdentity?.idCardSuffix || "",
+        review.originalContent,
+        review.finalContent,
+        review.isFeatured ? "是" : "否",
+        review.sensitiveHit ? "是" : "否",
+        review.matchedSensitiveWords.join("、"),
+        formatCsvDate(review.createdAt),
+        formatCsvDate(review.reviewedAt),
+        formatCsvDate(review.hiddenAt),
+      ]
+        .map(escapeCsvCell)
+        .join(",")
+    ),
+  ];
+
+  return `\uFEFF${lines.join("\n")}`;
 }
 
 async function getHomepageData() {
@@ -1676,6 +1763,7 @@ module.exports = {
   updateReview,
   getFeaturedReviews,
   updateFeaturedReviews,
+  exportAdminReviewsCsv,
   listSensitiveWords,
   createSensitiveWord,
   updateSensitiveWord,

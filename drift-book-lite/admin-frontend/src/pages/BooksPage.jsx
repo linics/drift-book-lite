@@ -172,7 +172,7 @@ export function BooksPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="图书与导入"
-      description="上传书目文件批量导入，查看历史批次，并对单本图书做修订。"
+      description="导入书目并维护图书信息。"
     >
       <StatusMessage error={loadError} />
 

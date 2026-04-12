@@ -16,6 +16,7 @@ const {
   updateReview,
   getFeaturedReviews,
   updateFeaturedReviews,
+  exportAdminReviewsCsv,
   listSensitiveWords,
   createSensitiveWord,
   updateSensitiveWord,
@@ -170,6 +171,17 @@ router.get("/reviews", async (req, res) => {
     bookId: req.query.bookId,
   });
   res.json({ reviews });
+});
+
+router.get("/reviews/export", async (_req, res) => {
+  const csv = await exportAdminReviewsCsv();
+  const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="reviews-${stamp}.csv"`
+  );
+  res.send(csv);
 });
 
 router.patch("/reviews/:reviewId", async (req, res) => {

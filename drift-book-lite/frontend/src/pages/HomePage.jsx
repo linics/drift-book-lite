@@ -15,13 +15,22 @@ import { PublicShell } from "../components/PublicShell.jsx";
 
 const MotionImage = motion.img;
 const MotionDiv = motion.div;
+const rankingRowClasses = [
+  "lg:row-start-2",
+  "lg:row-start-3",
+  "lg:row-start-4",
+  "lg:row-start-5",
+  "lg:row-start-6",
+];
+const activityOrderClasses = ["order-2", "order-3", "order-4", "order-5", "order-6"];
+const featuredOrderClasses = ["order-8", "order-9", "order-10", "order-11", "order-12"];
 
 export function HomePage() {
   const navigate = useNavigate();
   const { assets, error } = useSiteAssets();
   const { data: homepage, error: homepageError } = useHomepageData();
   const [activeIndex, setActiveIndex] = useState(0);
-  const rankingPreviewLimit = 3;
+  const rankingPreviewLimit = 5;
 
   const slides = useMemo(
     () => sortCarousel(assets?.carouselImages || []),
@@ -152,10 +161,17 @@ export function HomePage() {
 
         <section
           data-testid="homepage-rankings"
-          className="grid gap-6 lg:grid-cols-2"
+          className="rounded-[2.5rem] border border-stone-200/80 bg-white/62 p-4 shadow-[0_24px_80px_rgba(47,33,15,0.08)] md:p-5"
         >
-          <div className="rounded-[2.3rem] border border-stone-200/80 bg-white/72 p-6 shadow-[0_22px_70px_rgba(47,33,15,0.08)] md:p-7">
-            <div className="flex flex-wrap items-end justify-between gap-4">
+          <div
+            data-testid="ranking-shared-grid"
+            data-layout="shared-ranking-grid"
+            className="grid gap-3 lg:grid-cols-2 lg:grid-rows-[auto_repeat(5,9rem)] lg:gap-x-6 lg:gap-y-3"
+          >
+            <div
+              data-testid="activity-ranking-heading"
+              className="order-1 flex h-full flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-stone-200/80 bg-white/82 p-5 lg:order-none lg:col-start-1 lg:row-start-1"
+            >
               <div>
                 <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Activity Rank</p>
                 <h2 className="mt-3 font-display text-3xl text-stone-900">留言量排行榜</h2>
@@ -164,46 +180,14 @@ export function HomePage() {
                 </p>
               </div>
               <span className="rounded-full bg-[#8b2f2a]/8 px-3 py-2 text-xs uppercase tracking-[0.24em] text-[#8b2f2a]">
-                首页预览 {activityPreview.length} 条
+                当前展示 {activityPreview.length} 条
               </span>
             </div>
-            <div data-testid="activity-ranking-list" className="mt-6 space-y-3">
-              {activityPreview.length === 0 ? (
-                <div className="rounded-[1.6rem] border border-dashed border-stone-300 bg-[#faf6ef] p-4 text-sm leading-7 text-stone-500">
-                  当前还没有公开接龙，欢迎成为第一位留言的读者。
-                </div>
-              ) : (
-                activityPreview.map((book, index) => (
-                  <Link
-                    key={book.id}
-                    to={`/books/${book.id}`}
-                    className="group flex items-center justify-between gap-4 rounded-[1.6rem] border border-stone-200 bg-[#faf6ef] px-4 py-4 transition hover:border-[#8b2f2a]/35 hover:bg-white"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-white text-sm font-semibold text-[#8b2f2a] shadow-[0_10px_30px_rgba(47,33,15,0.06)]">
-                        {String(index + 1).padStart(2, "0")}
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
-                          热门接龙书页
-                        </p>
-                        <h3 className="mt-1 text-base font-semibold text-stone-900 transition group-hover:text-[#8b2f2a]">
-                          {book.title}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-display text-3xl text-[#8b2f2a]">{book.messageCount}</div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-stone-500">层留言</p>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
 
-          <div className="rounded-[2.3rem] border border-stone-200/80 bg-[#fffaf1]/85 p-6 shadow-[0_22px_70px_rgba(47,33,15,0.08)] md:p-7">
-            <div className="flex flex-wrap items-end justify-between gap-4">
+            <div
+              data-testid="featured-ranking-heading"
+              className="order-7 flex h-full flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-stone-200/80 bg-[#fffaf1]/90 p-5 lg:order-none lg:col-start-2 lg:row-start-1"
+            >
               <div>
                 <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Featured Lines</p>
                 <h2 className="mt-3 font-display text-3xl text-stone-900">管理员精选留言</h2>
@@ -212,43 +196,101 @@ export function HomePage() {
                 </p>
               </div>
               <span className="rounded-full bg-stone-900/6 px-3 py-2 text-xs uppercase tracking-[0.24em] text-stone-600">
-                首页预览 {featuredPreview.length} 条
+                当前展示 {featuredPreview.length} 条
               </span>
             </div>
-            <div data-testid="featured-ranking-list" className="mt-6 space-y-3">
-              {featuredPreview.length === 0 ? (
-                <div className="rounded-[1.6rem] border border-dashed border-stone-300 bg-white/70 p-4 text-sm leading-7 text-stone-500">
-                  还没有精选留言，管理员审核后会逐步补充。
-                </div>
-              ) : (
-                featuredPreview.map((review, index) => (
+
+            {activityPreview.length === 0 ? (
+              <div className="order-2 rounded-[1.6rem] border border-dashed border-stone-300 bg-[#faf6ef] p-4 text-sm leading-7 text-stone-500 lg:order-none lg:col-start-1 lg:row-span-5 lg:row-start-2">
+                当前还没有公开接龙，欢迎成为第一位留言的读者。
+              </div>
+            ) : null}
+
+            {featuredPreview.length === 0 ? (
+              <div className="order-8 rounded-[1.6rem] border border-dashed border-stone-300 bg-white/70 p-4 text-sm leading-7 text-stone-500 lg:order-none lg:col-start-2 lg:row-span-5 lg:row-start-2">
+                还没有精选留言，管理员审核后会逐步补充。
+              </div>
+            ) : null}
+
+            {Array.from({ length: rankingPreviewLimit }, (_, index) => {
+              const book = activityPreview[index];
+              const review = featuredPreview[index];
+
+              return (
+                <div key={`ranking-row-${index}`} data-testid="ranking-row-slot" className="contents">
+                  {book ? (
+                  <Link
+                    key={book.id}
+                    data-testid="activity-ranking-link"
+                    to={`/books/${book.id}`}
+                    className={clsx(
+                      "group flex h-full min-h-[8.75rem] items-center justify-between gap-4 overflow-hidden rounded-[1.6rem] border border-stone-200 bg-[#faf6ef] px-4 py-4 transition hover:border-[#8b2f2a]/35 hover:bg-white lg:order-none lg:col-start-1 lg:h-36",
+                      rankingRowClasses[index],
+                      activityOrderClasses[index]
+                    )}
+                  >
+                    <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.1rem] bg-white text-sm font-semibold text-[#8b2f2a] shadow-[0_10px_30px_rgba(47,33,15,0.06)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+                          热门接龙书页
+                        </p>
+                        <h3
+                          className="mt-1 text-base font-semibold text-stone-900 transition group-hover:text-[#8b2f2a]"
+                          style={lineClampStyle(2)}
+                        >
+                          {book.title}
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-display text-3xl text-[#8b2f2a]">{book.messageCount}</div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-stone-500">层留言</p>
+                    </div>
+                  </Link>
+                  ) : null}
+
+                  {review ? (
                   <Link
                     key={review.id}
+                    data-testid="featured-ranking-link"
                     to={`/books/${review.bookId}#review-${review.id}`}
-                    className="group block rounded-[1.6rem] border border-stone-200 bg-white/80 p-4 transition hover:border-[#8b2f2a]/35 hover:bg-white"
+                    className={clsx(
+                      "group flex h-full min-h-[8.75rem] flex-col justify-between overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white/80 p-4 transition hover:border-[#8b2f2a]/35 hover:bg-white lg:order-none lg:col-start-2 lg:h-36",
+                      rankingRowClasses[index],
+                      featuredOrderClasses[index]
+                    )}
                   >
-                    <div className="flex items-center justify-between gap-4">
-                      <Badge tone="accent">精选 {String(index + 1).padStart(2, "0")}</Badge>
-                      {review.sequenceNumber ? (
-                        <Badge tone="muted">第 {review.sequenceNumber} 层</Badge>
-                      ) : null}
+                    <div className="min-w-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <Badge tone="accent">精选 {String(index + 1).padStart(2, "0")}</Badge>
+                        {review.sequenceNumber ? (
+                          <Badge tone="muted">第 {review.sequenceNumber} 层</Badge>
+                        ) : null}
+                      </div>
+                      <h3
+                        className="mt-3 text-base font-semibold text-stone-900 transition group-hover:text-[#8b2f2a]"
+                        style={lineClampStyle(1)}
+                      >
+                        {review.bookTitle}
+                      </h3>
+                      <p
+                        className="mt-2 text-sm leading-6 text-stone-700"
+                        style={lineClampStyle(2)}
+                      >
+                        {review.content}
+                      </p>
                     </div>
-                    <h3 className="mt-4 text-base font-semibold text-stone-900 transition group-hover:text-[#8b2f2a]">
-                      {review.bookTitle}
-                    </h3>
-                    <p
-                      className="mt-3 text-sm leading-7 text-stone-700"
-                      style={lineClampStyle(3)}
-                    >
-                      {review.content}
-                    </p>
-                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-stone-500">
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-stone-500">
                       {review.displayName}
                     </p>
                   </Link>
-                ))
-              )}
-            </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </section>
 

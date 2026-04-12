@@ -49,6 +49,8 @@ const homepagePayload = {
     { id: "book-2", title: "第二本书", messageCount: 11 },
     { id: "book-3", title: "第三本书", messageCount: 10 },
     { id: "book-4", title: "第四本书", messageCount: 9 },
+    { id: "book-5", title: "第五本书", messageCount: 8 },
+    { id: "book-6", title: "第六本书", messageCount: 7 },
   ],
   featuredReviews: [
     {
@@ -56,7 +58,7 @@ const homepagePayload = {
       bookId: "book-1",
       bookTitle: "第一本书",
       content: "精选内容 1",
-      displayName: "高一（1）班 王*",
+      displayName: "2025届 王小明",
       sequenceNumber: 3,
     },
     {
@@ -64,7 +66,7 @@ const homepagePayload = {
       bookId: "book-2",
       bookTitle: "第二本书",
       content: "精选内容 2",
-      displayName: "高一（2）班 李*",
+      displayName: "2025届 李小红",
       sequenceNumber: 4,
     },
     {
@@ -72,7 +74,7 @@ const homepagePayload = {
       bookId: "book-3",
       bookTitle: "第三本书",
       content: "精选内容 3",
-      displayName: "高一（3）班 张*",
+      displayName: "2025届 张小强",
       sequenceNumber: 5,
     },
     {
@@ -80,8 +82,24 @@ const homepagePayload = {
       bookId: "book-4",
       bookTitle: "第四本书",
       content: "精选内容 4",
-      displayName: "高一（4）班 周*",
+      displayName: "2025届 周小雨",
       sequenceNumber: 6,
+    },
+    {
+      id: "review-5",
+      bookId: "book-5",
+      bookTitle: "第五本书",
+      content: "精选内容 5",
+      displayName: "2025届 吴小雪",
+      sequenceNumber: 7,
+    },
+    {
+      id: "review-6",
+      bookId: "book-6",
+      bookTitle: "第六本书",
+      content: "精选内容 6",
+      displayName: "2025届 郑小青",
+      sequenceNumber: 8,
     },
   ],
 };
@@ -109,20 +127,46 @@ describe("HomePage", () => {
     expect(within(hero).getByRole("button", { name: "搜索图书" })).toBeInTheDocument();
   });
 
-  test("rankings section shows preview limit of 3 per list", async () => {
+  test("rankings section shows preview limit of 5 per list", async () => {
     render(<App />);
 
     await screen.findByTestId("homepage-rankings");
 
-    // activityBooks has 4 entries but preview limit is 3
-    expect(
-      within(screen.getByTestId("activity-ranking-list")).getAllByRole("link")
-    ).toHaveLength(3);
+    // activityBooks has 6 entries but preview limit is 5
+    expect(screen.getAllByTestId("activity-ranking-link")).toHaveLength(5);
 
-    // featuredReviews has 4 entries but preview limit is 3
+    // featuredReviews has 6 entries but preview limit is 5
+    expect(screen.getAllByTestId("featured-ranking-link")).toHaveLength(5);
+  });
+
+  test("rankings use a shared aligned grid with five row slots", async () => {
+    render(<App />);
+
+    const rankings = await screen.findByTestId("homepage-rankings");
+    const sharedGrid = within(rankings).getByTestId("ranking-shared-grid");
+
+    expect(sharedGrid).toHaveAttribute("data-layout", "shared-ranking-grid");
+    expect(within(sharedGrid).getAllByTestId("ranking-row-slot")).toHaveLength(5);
+    expect(within(sharedGrid).getByTestId("activity-ranking-heading")).toBeInTheDocument();
+    expect(within(sharedGrid).getByTestId("featured-ranking-heading")).toBeInTheDocument();
+  });
+
+  test("restores the previous homepage copy while keeping 5-item previews", async () => {
+    render(<App />);
+
+    const hero = await screen.findByTestId("homepage-hero");
     expect(
-      within(screen.getByTestId("featured-ranking-list")).getAllByRole("link")
-    ).toHaveLength(3);
+      within(hero).getByText(/在"一本书的漂流"里，寻找一本书，留下你的那一层，看见阅读真正流动起来。/)
+    ).toBeInTheDocument();
+    expect(within(hero).getByText(/从一次搜索开始，找到那本正在流动的书。/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/图书馆是我们阅读漂流的共同起点。从这里出发，留下属于你的那一层阅读印记。/)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/找一本正在流动的书，接上属于你的那一层。/)).toBeInTheDocument();
+    expect(screen.getByText(/先读几段有代表性的接龙片段，再决定从哪本书进入。/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/阅读从来不是一件孤独的事。找到一本书，留下你的声音，让它继续流向下一位读者。/)
+    ).toBeInTheDocument();
   });
 
   test("process section appears after rankings section", async () => {
@@ -146,9 +190,9 @@ describe("HomePage", () => {
 
     render(<App />);
 
-    await screen.findByTestId("activity-ranking-list");
+    const rankings = await screen.findByTestId("homepage-rankings");
     expect(
-      within(screen.getByTestId("activity-ranking-list")).getByText(/还没有公开接龙/)
+      within(rankings).getByText(/还没有公开接龙/)
     ).toBeInTheDocument();
   });
 });
@@ -164,7 +208,7 @@ describe("SearchPage", () => {
   });
 
   test("renders search form and shows results", async () => {
-    mockGet.mockImplementation((path, config) => {
+    mockGet.mockImplementation((path) => {
       if (path === "/site-assets") return Promise.resolve({ data: siteAssetsPayload });
       if (path === "/books/search")
         return Promise.resolve({
@@ -216,7 +260,7 @@ describe("BookDetailPage", () => {
     reviews: [
       {
         id: "r1",
-        displayName: "高一（1）班 王*",
+        displayName: "2025届 王小明",
         content: "这是一条接龙留言。",
         sequenceNumber: 1,
         reviewedAt: "2026-01-01T00:00:00Z",
@@ -263,7 +307,7 @@ describe("BookDetailPage", () => {
     expect(await screen.findByText(/还没有公开接龙/)).toBeInTheDocument();
   });
 
-  test("submit review form shows success message", async () => {
+  test("submit review form allows omitting id card suffix", async () => {
     mockPost.mockResolvedValue({ data: { message: "留言已提交，等待审核。" } });
 
     render(<App />);
@@ -274,11 +318,18 @@ describe("BookDetailPage", () => {
     const user = userEvent.setup();
     await user.type(screen.getByPlaceholderText("例如 320250002"), "320250001");
     await user.type(screen.getByPlaceholderText("请输入学籍姓名"), "王小明");
-    await user.type(screen.getByPlaceholderText("例如 3225"), "1234");
     await user.type(screen.getByPlaceholderText("写下你想接上的这一层内容。"), "测试接龙内容");
 
     await user.click(screen.getByRole("button", { name: "提交并进入审核" }));
 
     expect(await screen.findByText("留言已提交，等待审核。")).toBeInTheDocument();
+    expect(mockPost).toHaveBeenCalledWith(
+      "/books/bk1/reviews",
+      expect.objectContaining({
+        systemId: "320250001",
+        studentName: "王小明",
+        idCardSuffix: "",
+      })
+    );
   });
 });

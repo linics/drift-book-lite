@@ -51,7 +51,7 @@ export function AdminLoginPage() {
             <span className="text-[#d7b58c]"> 管理评语。</span>
           </h1>
           <p className="mt-6 max-w-xl text-sm leading-8 text-stone-300">
-            新版后台独立于学生端运行，不在学生首页显示，专门用于导入书目和审核内容。
+            后台用于导入书目、审核留言和维护首页内容。
           </p>
         </div>
 

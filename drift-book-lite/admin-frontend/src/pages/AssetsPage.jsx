@@ -96,7 +96,7 @@ export function AssetsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="站点素材"
-      description="管理学生端首页的 Logo 与轮播图，支持从默认目录重新载入。"
+      description="管理首页 Logo 和轮播图。"
     >
       <StatusMessage error={error} success={success} />
       {!assets ? (
@@ -111,7 +111,7 @@ export function AssetsPage({ token, onLogout }) {
                 <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Default Assets</p>
                 <h3 className="mt-2 font-display text-3xl text-stone-900">默认首页图片</h3>
                 <p className="mt-3 text-sm leading-7 text-stone-600">
-                  可在这里手动重新载入默认目录中的首页图片，覆盖当前配置。
+                  重新载入默认目录中的首页图片。
                 </p>
               </div>
               <PrimaryButton
@@ -131,17 +131,6 @@ export function AssetsPage({ token, onLogout }) {
               <p className="mt-3 text-sm leading-6 text-stone-500">
                 识别规则：`logo.*` 作为学校 Logo，`carousel-01.*`、`carousel-02.*` 等按顺序作为首页轮播图。
               </p>
-              <p className="mt-2 text-sm leading-6 text-stone-500">
-                这里展示的是后端当前运行环境中的目录提示。Docker Compose 部署时通常会显示容器内路径
-                <code className="mx-1 rounded bg-stone-100 px-1.5 py-0.5 text-[11px]">
-                  /app/resources/default-site-assets
-                </code>
-                ，无 Docker 部署时则显示本机实际目录；只要
-                <code className="mx-1 rounded bg-stone-100 px-1.5 py-0.5 text-[11px]">
-                  DEFAULT_SITE_ASSETS_DIR
-                </code>
-                配置正确，其他电脑也会自动显示各自环境里的路径。
-              </p>
             </div>
           </section>
 
@@ -151,7 +140,7 @@ export function AssetsPage({ token, onLogout }) {
                 <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Carousel</p>
                 <h3 className="mt-2 font-display text-3xl text-stone-900">校园轮播图</h3>
                 <p className="mt-3 text-sm leading-7 text-stone-600">
-                  这里追加的是当前生效中的轮播图，不会修改默认目录中的图片文件。
+                  这里追加的是当前生效中的轮播图。
                 </p>
               </div>
               <div className="flex flex-col gap-3 md:flex-row md:items-end">

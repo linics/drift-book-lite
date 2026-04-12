@@ -9,23 +9,23 @@ function normalizeCell(value) {
 
 function normalizeIdCardSuffix(value) {
   const normalized = normalizeCell(value).toUpperCase();
-  return normalized.slice(-4);
+  return normalized ? normalized.slice(-4) : null;
 }
 
-function maskStudentName(name) {
-  const normalized = normalizeCell(name);
-  if (!normalized) return "";
-  if (normalized.length === 1) return `${normalized}*`;
-  return `${normalized.slice(0, 1)}*`;
+function parseStudentCohort(systemId) {
+  const normalized = normalizeCell(systemId);
+  const matched = normalized.match(/^3(\d{4})/);
+  return matched ? `${matched[1]}届` : "";
 }
 
-function buildStudentDisplayName(className, studentName) {
-  return `${normalizeCell(className)} ${maskStudentName(studentName)}`.trim();
+function buildStudentDisplayName(systemId, studentName) {
+  const cohort = parseStudentCohort(systemId);
+  return [cohort, normalizeCell(studentName)].filter(Boolean).join(" ").trim();
 }
 
 function loadStudentRosterRows() {
   if (!studentRosterPath) {
-    throw new Error("STUDENT_ROSTER_PATH is not configured. Set this environment variable to the path of the student roster file.");
+    return [];
   }
   if (!fs.existsSync(studentRosterPath)) {
     throw new Error(`Student roster file not found: ${studentRosterPath}`);
@@ -47,25 +47,34 @@ function loadStudentRosterRows() {
       gender: normalizeCell(row["性别"]) || null,
       idCardSuffix: normalizeIdCardSuffix(row["身份证号"]),
     }))
-    .filter((row) => row.systemId && row.studentName && row.className && row.idCardSuffix);
+    .filter((row) => row.systemId && row.studentName && row.className);
 }
 
 async function ensureStudentRoster() {
-  const currentCount = await prisma.studentRoster.count();
-  if (currentCount > 0) return;
-
   const rows = loadStudentRosterRows();
   if (rows.length === 0) return;
 
-  await prisma.studentRoster.createMany({
-    data: rows,
-  });
+  await prisma.$transaction(
+    rows.map((row) =>
+      prisma.studentRoster.upsert({
+        where: { systemId: row.systemId },
+        update: {
+          studentName: row.studentName,
+          className: row.className,
+          seatNumber: row.seatNumber,
+          gender: row.gender,
+          idCardSuffix: row.idCardSuffix,
+        },
+        create: row,
+      })
+    )
+  );
 }
 
 module.exports = {
   ensureStudentRoster,
   loadStudentRosterRows,
   normalizeIdCardSuffix,
-  maskStudentName,
   buildStudentDisplayName,
+  parseStudentCohort,
 };

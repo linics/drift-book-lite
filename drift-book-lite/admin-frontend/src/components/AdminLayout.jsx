@@ -18,7 +18,7 @@ export function AdminLayout({ title, description, onLogout, children }) {
           <p className="text-xs uppercase tracking-[0.34em] text-stone-400">Admin Console</p>
           <h1 className="mt-4 font-display text-4xl text-[#f5ead9]">一本书的漂流</h1>
           <p className="mt-3 text-sm leading-7 text-stone-300">
-            管理端独立运行在馆内端口，负责图书目录、评语审核与首页素材维护。
+            图书、留言和首页素材都在这里维护。
           </p>
           <nav className="mt-8 space-y-2">
             {links.map((link) => (
@@ -64,7 +64,9 @@ export function AdminLayout({ title, description, onLogout, children }) {
           <header className="rounded-[2.4rem] border border-stone-200/70 bg-white/80 p-8 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
             <p className="text-xs uppercase tracking-[0.34em] text-[#8b2f2a]">Admin Panel</p>
             <h2 className="mt-3 font-display text-4xl text-stone-900">{title}</h2>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-stone-600">{description}</p>
+            {description ? (
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-stone-600">{description}</p>
+            ) : null}
           </header>
           {children}
         </div>
