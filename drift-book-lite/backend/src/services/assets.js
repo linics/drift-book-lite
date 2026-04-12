@@ -1,9 +1,20 @@
 const fs = require("fs");
 const path = require("path");
 const { prisma } = require("../lib/prisma");
-const { materialsDir, uploadsDir } = require("../lib/env");
+const { defaultSiteAssetsDir, uploadsDir } = require("../lib/env");
 const { ensureDir, normalizePublicPath } = require("../utils/paths");
 const { HttpError } = require("../utils/httpError");
+
+const IMAGE_EXTENSIONS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".gif",
+  ".avif",
+  ".bmp",
+  ".svg",
+]);
 
 const defaultProcessContent = [
   {
@@ -118,36 +129,58 @@ function copyIntoUploads(sourcePath, subdir, filename) {
   return normalizePublicPath(destination);
 }
 
-async function bootstrapFromMaterials() {
-  if (!fs.existsSync(materialsDir)) {
-    throw new Error(`Materials directory not found: ${materialsDir}`);
-  }
+function isSupportedImageFile(filename) {
+  return IMAGE_EXTENSIONS.has(path.extname(filename).toLowerCase());
+}
 
-  const current = await getSiteAsset();
+function isLogoFilename(filename) {
+  return /^logo\.[a-z0-9]+$/i.test(filename);
+}
+
+function loadDefaultSiteAssetFiles({ requireDirectory = false } = {}) {
+  if (!fs.existsSync(defaultSiteAssetsDir)) {
+    if (requireDirectory) {
+      throw new HttpError(404, `默认站点图片目录不存在：${defaultSiteAssetsDir}`);
+    }
+    return {
+      logoFile: null,
+      carouselFiles: [],
+    };
+  }
 
   const files = fs
-    .readdirSync(materialsDir)
+    .readdirSync(defaultSiteAssetsDir)
     .filter((name) => !name.startsWith("."))
-    .sort();
+    .filter((name) => isSupportedImageFile(name));
 
-  const logoFile = files.find((name) => name.toLowerCase() === "logo.jpg");
-  const imageFiles = files.filter((name) => name !== logoFile);
+  const logoFilename = files.find((name) => isLogoFilename(name)) || null;
+  const carouselFiles = files
+    .filter((name) => !isLogoFilename(name))
+    .sort((left, right) => left.localeCompare(right, "zh-CN"))
+    .map((name) => ({
+      name,
+      sourcePath: path.join(defaultSiteAssetsDir, name),
+    }));
 
-  let schoolLogoPath = null;
-  if (logoFile) {
-    schoolLogoPath = copyIntoUploads(
-      path.join(materialsDir, logoFile),
-      "site-assets",
-      `school-logo${path.extname(logoFile)}`
-    );
-  }
+  return {
+    logoFile: logoFilename
+      ? {
+          name: logoFilename,
+          sourcePath: path.join(defaultSiteAssetsDir, logoFilename),
+        }
+      : null,
+    carouselFiles,
+  };
+}
 
-  const carouselImages = imageFiles.map((file, index) => {
+function buildDefaultCarouselImages(carouselFiles) {
+  return carouselFiles.map((file, index) => {
     const storedPath = copyIntoUploads(
-      path.join(materialsDir, file),
+      file.sourcePath,
       "site-assets",
-      `campus-${String(index + 1).padStart(2, "0")}${path.extname(file)}`
+      `campus-${String(index + 1).padStart(2, "0")}${path.extname(file.name).toLowerCase()}`
     );
+
     return {
       id: `slide-${index + 1}`,
       path: storedPath,
@@ -156,14 +189,63 @@ async function bootstrapFromMaterials() {
       label: `校园轮播 ${index + 1}`,
     };
   });
+}
 
-  await updateSiteAsset({
+async function syncDefaultSiteAssets({ mode = "fill-missing" } = {}) {
+  if (!["fill-missing", "replace-homepage-images"].includes(mode)) {
+    throw new HttpError(400, "默认站点图片同步模式不合法");
+  }
+
+  const current = await getSiteAsset();
+  const { logoFile, carouselFiles } = loadDefaultSiteAssetFiles({
+    requireDirectory: mode === "replace-homepage-images",
+  });
+
+  let schoolLogoPath = current.schoolLogoPath;
+  let carouselImages = current.carouselImages;
+
+  if (mode === "fill-missing") {
+    if (!current.schoolLogoPath && logoFile) {
+      schoolLogoPath = copyIntoUploads(
+        logoFile.sourcePath,
+        "site-assets",
+        `school-logo${path.extname(logoFile.name).toLowerCase()}`
+      );
+    }
+
+    if ((!Array.isArray(current.carouselImages) || current.carouselImages.length === 0) && carouselFiles.length) {
+      carouselImages = buildDefaultCarouselImages(carouselFiles);
+    }
+  }
+
+  if (mode === "replace-homepage-images") {
+    if (!logoFile) {
+      throw new HttpError(400, "默认站点图片目录中缺少 logo 文件");
+    }
+    if (!carouselFiles.length) {
+      throw new HttpError(400, "默认站点图片目录中缺少轮播图片");
+    }
+
+    schoolLogoPath = copyIntoUploads(
+      logoFile.sourcePath,
+      "site-assets",
+      `school-logo${path.extname(logoFile.name).toLowerCase()}`
+    );
+    carouselImages = buildDefaultCarouselImages(carouselFiles);
+  }
+
+  if (
+    schoolLogoPath === current.schoolLogoPath &&
+    JSON.stringify(carouselImages) === JSON.stringify(current.carouselImages)
+  ) {
+    return current;
+  }
+
+  return updateSiteAsset({
     schoolLogoPath,
     carouselImages,
     processContent: current.processContent,
   });
-
-  return getSiteAsset();
 }
 
 async function uploadLogoAsset(file) {
@@ -201,7 +283,8 @@ module.exports = {
   defaultProcessContent,
   getSiteAsset,
   updateSiteAsset,
-  bootstrapFromMaterials,
+  loadDefaultSiteAssetFiles,
+  syncDefaultSiteAssets,
   uploadLogoAsset,
   uploadCarouselAsset,
 };

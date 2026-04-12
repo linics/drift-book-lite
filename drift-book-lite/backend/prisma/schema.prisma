@@ -26,6 +26,11 @@ enum ImportStatus {
   failed
 }
 
+enum ReviewIdentityType {
+  legacy
+  student
+}
+
 model AdminUser {
   id             Int           @id @default(autoincrement())
   username       String        @unique
@@ -66,24 +71,38 @@ model Book {
 }
 
 model BookReview {
-  id              Int          @id @default(autoincrement())
-  bookId          Int?
-  displayName     String
-  originalContent String
-  finalContent    String
-  status          ReviewStatus @default(pending)
-  reviewedAt      DateTime?
-  reviewedById    Int?
-  editedAt        DateTime?
-  editedById      Int?
-  rejectionReason String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  book            Book?        @relation(fields: [bookId], references: [id], onDelete: SetNull)
-  reviewedBy      AdminUser?   @relation("ReviewedBy", fields: [reviewedById], references: [id])
-  editedBy        AdminUser?   @relation("EditedBy", fields: [editedById], references: [id])
+  id                  Int                @id @default(autoincrement())
+  bookId              Int?
+  displayName         String
+  originalContent     String
+  finalContent        String
+  status              ReviewStatus       @default(pending)
+  identityType        ReviewIdentityType @default(legacy)
+  studentRosterId     Int?
+  studentSystemId     String?
+  studentName         String?
+  studentClassName    String?
+  studentIdCardSuffix String?
+  sensitiveHit        Boolean            @default(false)
+  matchedSensitiveWords Json?
+  isFeatured          Boolean            @default(false)
+  featuredOrder       Int?
+  reviewedAt          DateTime?
+  reviewedById        Int?
+  editedAt            DateTime?
+  editedById          Int?
+  hiddenAt            DateTime?
+  rejectionReason     String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  book                Book?              @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  reviewedBy          AdminUser?         @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  editedBy            AdminUser?         @relation("EditedBy", fields: [editedById], references: [id])
+  studentRoster       StudentRoster?     @relation(fields: [studentRosterId], references: [id], onDelete: SetNull)
 
   @@index([bookId, status, createdAt])
+  @@index([bookId, isFeatured, featuredOrder])
+  @@index([studentSystemId, bookId])
 }
 
 model ImportBatch {
@@ -108,6 +127,29 @@ model SiteAsset {
   schoolLogoPath String?
   carouselImages Json
   processContent Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model StudentRoster {
+  id           Int          @id @default(autoincrement())
+  systemId     String       @unique
+  studentName  String
+  className    String
+  seatNumber   String?
+  gender       String?
+  idCardSuffix String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  reviews      BookReview[]
+
+  @@index([studentName, className])
+}
+
+model SensitiveWord {
+  id             Int      @id @default(autoincrement())
+  word           String   @unique
+  normalizedWord String   @unique
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

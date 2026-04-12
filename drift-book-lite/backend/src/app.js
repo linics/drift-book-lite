@@ -6,14 +6,21 @@ const { Prisma } = require("@prisma/client");
 const { publicRouter } = require("./routes/public");
 const { adminRouter } = require("./routes/admin");
 const { bootstrapSystem } = require("./services/bootstrap");
-const { uploadsDir, projectRoot } = require("./lib/env");
+const { uploadsDir, projectRoot, appBaseUrl, adminAppBaseUrl } = require("./lib/env");
 const { HttpError } = require("./utils/httpError");
 
 async function createApp() {
   await bootstrapSystem();
 
   const app = express();
-  app.use(cors());
+  const allowedOrigins = (
+    process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(",")
+      : [appBaseUrl, adminAppBaseUrl]
+  )
+    .map((s) => s.trim())
+    .filter(Boolean);
+  app.use(cors({ origin: [...new Set(allowedOrigins)], credentials: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use("/uploads", express.static(uploadsDir));

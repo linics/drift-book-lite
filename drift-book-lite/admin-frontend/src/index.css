@@ -4,9 +4,14 @@
 @theme {
   --font-display: "Noto Serif SC", "Songti SC", "STSong", serif;
   --font-sans: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --color-primary: #8b2f2a;
+  --color-primary-dark: #6d221f;
+  --color-surface: #faf6ef;
+  --color-surface-warm: #fffaf1;
 }
 
 :root {
+  --color-primary-rgb: 139, 47, 42;
   color: #1f1811;
   background: #f3eee6;
   font-family: var(--font-sans);
@@ -43,4 +48,13 @@ select {
     linear-gradient(135deg, rgba(211, 181, 140, 0.12), transparent 50%);
   border: 1px solid rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(18px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "test": "prisma db push --accept-data-loss && vitest run"
+    "test": "node tests/run-tests.js",
+    "lint": "eslint src/"
   },
   "keywords": [],
   "author": "",
@@ -29,6 +30,9 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.0",
+    "globals": "^17.4.0",
     "supertest": "^7.2.2",
     "vitest": "^4.1.2"
   },

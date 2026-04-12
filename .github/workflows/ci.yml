@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feature/**]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: drift-book-lite/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: drift-book-lite/backend/package-lock.json
+      - run: npm ci
+      - run: cp .env.example .env
+      - run: npx prisma generate
+      - run: npm test
+
+  frontend-lint:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: drift-book-lite/frontend/package-lock.json
+      - run: npm ci
+        working-directory: drift-book-lite/frontend
+      - run: npm run lint
+        working-directory: drift-book-lite/frontend
+
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test student frontend
+        working-directory: drift-book-lite/frontend
+        run: |
+          npm ci
+          npm test
+      - name: Test admin frontend
+        working-directory: drift-book-lite/admin-frontend
+        run: |
+          npm ci
+          npm test
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: frontend-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build student frontend
+        working-directory: drift-book-lite/frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Build admin frontend
+        working-directory: drift-book-lite/admin-frontend
+        run: |
+          npm ci
+          npm run build

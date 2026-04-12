@@ -4,9 +4,15 @@ const path = require("path");
 const XLSX = require("xlsx");
 const { prisma } = require("../lib/prisma");
 const { HttpError } = require("../utils/httpError");
+const {
+  buildStudentDisplayName,
+  normalizeIdCardSuffix,
+  parseStudentCohort,
+} = require("./studentRoster");
 
 const SEARCH_CANDIDATE_LIMIT = 80;
 const SEARCH_BATCH_SIZE = 80;
+const PUBLIC_REVIEW_SEQUENCE_STATUSES = new Set(["approved"]);
 
 const requiredCatalogColumns = [
   "book_id",
@@ -439,10 +445,6 @@ function matchesGroupIdentity(book, identity, { respectPublisher = false } = {})
   return true;
 }
 
-function encodeLegacyGroupId(identity) {
-  return Buffer.from(JSON.stringify(identity)).toString("base64url");
-}
-
 function encodePublicGroupId(anchorBookId, identity) {
   return Buffer.from(
     JSON.stringify({
@@ -655,17 +657,54 @@ function serializeSinglePublicBook(book) {
   };
 }
 
+function normalizeReviewContent(input) {
+  return String(input || "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function serializeStudentIdentity(review) {
+  if (review.identityType !== "student") return null;
+
+  return {
+    systemId: review.studentSystemId,
+    studentName: review.studentName,
+    cohort: parseStudentCohort(review.studentSystemId),
+    className: review.studentClassName,
+    idCardSuffix: review.studentIdCardSuffix,
+  };
+}
+
+function getReviewDisplayName(review) {
+  if (review.identityType === "student") {
+    return buildStudentDisplayName(review.studentSystemId, review.studentName) || review.displayName;
+  }
+  return review.displayName;
+}
+
 function serializeReviewForAdmin(review) {
   return {
     id: review.id,
     bookId: review.bookId,
-    displayName: review.displayName,
+    publicBookId: review.groupedBook?.id || review.bookId,
+    displayName: getReviewDisplayName(review),
     originalContent: review.originalContent,
     finalContent: review.finalContent,
     status: review.status,
-    rejectionReason: review.rejectionReason,
+    identityType: review.identityType,
+    studentIdentity: serializeStudentIdentity(review),
+    sensitiveHit: Boolean(review.sensitiveHit),
+    matchedSensitiveWords: Array.isArray(review.matchedSensitiveWords)
+      ? review.matchedSensitiveWords
+      : [],
+    isFeatured: Boolean(review.isFeatured),
+    featuredOrder: review.featuredOrder ?? null,
+    sequenceNumber: review.sequenceNumber ?? null,
     reviewedAt: review.reviewedAt,
     editedAt: review.editedAt,
+    hiddenAt: review.hiddenAt,
     createdAt: review.createdAt,
     book: review.book
       ? {
@@ -686,21 +725,166 @@ function serializeReviewForAdmin(review) {
 function serializeReviewForPublic(review) {
   return {
     id: review.id,
-    displayName: review.displayName,
+    sequenceNumber: review.sequenceNumber ?? null,
+    displayName: getReviewDisplayName(review),
     content: review.finalContent,
     createdAt: review.createdAt,
     reviewedAt: review.reviewedAt,
   };
 }
 
-function parsePositiveIntId(value, resourceName) {
-  const normalized = String(value ?? "").trim();
-  if (!/^[1-9]\d*$/.test(normalized)) {
-    throw new HttpError(400, `${resourceName} ID 不合法`);
+function serializeFeaturedReview(review) {
+  return {
+    id: review.id,
+    bookId: review.groupedBook?.id || review.bookId,
+    bookTitle: review.groupedBook?.title || review.book?.title || "",
+    displayName: getReviewDisplayName(review),
+    content: review.finalContent,
+    sequenceNumber: review.sequenceNumber ?? null,
+    featuredOrder: review.featuredOrder ?? null,
+  };
+}
+
+function buildSequenceMap(reviews, { sequenceStatuses } = {}) {
+  const activeReviews = [...reviews]
+    .filter((review) =>
+      sequenceStatuses ? sequenceStatuses.has(review.status) : review.status !== "hidden"
+    )
+    .sort((left, right) => {
+      const diff = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      if (diff !== 0) return diff;
+      return left.id - right.id;
+    });
+
+  return new Map(activeReviews.map((review, index) => [review.id, index + 1]));
+}
+
+async function getGroupedBookMeta(book, cache = new Map()) {
+  if (!book) return null;
+
+  const cacheKey = getBookPublicGroupCacheKey(book);
+  if (cache.has(cacheKey)) {
+    return cache.get(cacheKey);
   }
 
-  return Number.parseInt(normalized, 10);
+  const groupedBooks = await prisma.book.findMany({
+    where: {
+      normalizedTitle: book.normalizedTitle,
+    },
+    orderBy: [{ id: "asc" }],
+  });
+  const aggregated = aggregateBookGroup(
+    groupedBooks.filter((candidate) => getBookPublicGroupCacheKey(candidate) === cacheKey)
+  );
+
+  const meta = {
+    id: aggregated.id,
+    title: aggregated.title,
+    author: aggregated.author,
+    publisher: aggregated.publisher,
+    barcodes: aggregated.barcodes,
+    groupBookCount: aggregated.groupBookCount,
+    totalCopies: aggregated.totalCopies,
+  };
+  cache.set(cacheKey, meta);
+  return meta;
 }
+
+async function annotateReviews(reviews, options = {}) {
+  const groupedBookCache = new Map();
+  const sequenceCache = new Map();
+
+  for (const review of reviews) {
+    if (!review.book) {
+      review.sequenceNumber = null;
+      review.groupedBook = null;
+      continue;
+    }
+
+    const cacheKey = getBookPublicGroupCacheKey(review.book);
+    review.groupedBook = await getGroupedBookMeta(review.book, groupedBookCache);
+
+    if (!sequenceCache.has(cacheKey)) {
+      const groupedBooks = await loadGroupedBooksByIdentity(
+        getBookGroupIdentity(review.book),
+        prisma,
+        {
+          respectPublisher: shouldRespectPublisherForPublicGrouping(
+            getBookGroupIdentity(review.book)
+          ),
+        }
+      );
+      const groupedReviews = await prisma.bookReview.findMany({
+        where: {
+          bookId: { in: groupedBooks.map((book) => book.id) },
+        },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
+      sequenceCache.set(cacheKey, buildSequenceMap(groupedReviews, options));
+    }
+
+    review.sequenceNumber = sequenceCache.get(cacheKey).get(review.id) || null;
+  }
+
+  return reviews;
+}
+
+async function resolveStudentIdentity({ systemId, studentName, idCardSuffix }) {
+  const roster = await prisma.studentRoster.findUnique({
+    where: { systemId: String(systemId || "").trim() },
+  });
+
+  if (!roster || roster.studentName !== String(studentName || "").trim()) {
+    throw new HttpError(400, "学生身份校验失败");
+  }
+
+  if (roster.idCardSuffix && roster.idCardSuffix !== normalizeIdCardSuffix(idCardSuffix)) {
+    throw new HttpError(400, "学生身份校验失败");
+  }
+
+  return roster;
+}
+
+async function detectSensitiveWords(content) {
+  const sensitiveWords = await prisma.sensitiveWord.findMany({
+    orderBy: [{ word: "asc" }],
+  });
+  const normalizedContent = normalizeReviewContent(content);
+  const matchedSensitiveWords = [
+    ...new Set(
+      sensitiveWords
+        .filter((item) => normalizedContent.includes(item.normalizedWord))
+        .map((item) => item.word)
+    ),
+  ];
+
+  return {
+    sensitiveHit: matchedSensitiveWords.length > 0,
+    matchedSensitiveWords,
+  };
+}
+
+async function ensureNoDuplicateReview({ systemId, bookIds, content }) {
+  if (!systemId) return;
+
+  const reviews = await prisma.bookReview.findMany({
+    where: {
+      studentSystemId: systemId,
+      bookId: { in: bookIds },
+    },
+    select: {
+      id: true,
+      originalContent: true,
+    },
+  });
+
+  const target = normalizeReviewContent(content);
+  const duplicated = reviews.some((review) => normalizeReviewContent(review.originalContent) === target);
+  if (duplicated) {
+    throw new HttpError(409, "同一本书下不能重复提交相同留言");
+  }
+}
+
 
 function levenshtein(left, right) {
   if (left === right) return 0;
@@ -879,41 +1063,66 @@ async function getBookById(id) {
 }
 
 async function listApprovedReviews(bookId) {
-  if (isNumericPublicId(bookId)) {
-    const book = await getBookByNumericPublicId(bookId);
-    const reviews = await prisma.bookReview.findMany({
-      where: {
-        bookId: book.id,
-        status: "approved",
-      },
-      orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
-    });
-
-    return reviews.map(serializeReviewForPublic);
-  }
-
-  const books = await resolveGroupedBooksByPublicId(bookId);
-
+  const { books } = await resolveReviewTargetByPublicId(bookId);
   const reviews = await prisma.bookReview.findMany({
     where: {
       bookId: { in: books.map((book) => book.id) },
       status: "approved",
     },
-    orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
+    include: { book: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
 
+  await annotateReviews(reviews, {
+    sequenceStatuses: PUBLIC_REVIEW_SEQUENCE_STATUSES,
+  });
   return reviews.map(serializeReviewForPublic);
 }
 
-async function createReview(bookId, { displayName, content }) {
-  const { targetBook } = await resolveReviewTargetByPublicId(bookId);
+async function createReview(bookId, payload) {
+  const content = String(payload.content || "").trim();
+  const { targetBook, books } = await resolveReviewTargetByPublicId(bookId);
+  const isLegacyPayload = Boolean(payload.displayName) && !payload.systemId;
+
+  let identityData;
+  if (isLegacyPayload) {
+    identityData = {
+      displayName: String(payload.displayName || "").trim(),
+      identityType: "legacy",
+      studentRosterId: null,
+      studentSystemId: null,
+      studentName: null,
+      studentClassName: null,
+      studentIdCardSuffix: null,
+    };
+  } else {
+    const roster = await resolveStudentIdentity(payload);
+    await ensureNoDuplicateReview({
+      systemId: roster.systemId,
+      bookIds: books.map((book) => book.id),
+      content,
+    });
+    identityData = {
+      displayName: buildStudentDisplayName(roster.systemId, roster.studentName),
+      identityType: "student",
+      studentRosterId: roster.id,
+      studentSystemId: roster.systemId,
+      studentName: roster.studentName,
+      studentClassName: roster.className,
+      studentIdCardSuffix: roster.idCardSuffix,
+    };
+  }
+
+  const moderation = await detectSensitiveWords(content);
 
   const review = await prisma.bookReview.create({
     data: {
       bookId: targetBook.id,
-      displayName,
+      ...identityData,
       originalContent: content,
       finalContent: content,
+      sensitiveHit: moderation.sensitiveHit,
+      matchedSensitiveWords: moderation.matchedSensitiveWords,
     },
   });
 
@@ -1240,7 +1449,15 @@ async function updateBook(id, data) {
 async function listAdminReviews({ status, bookId }) {
   const where = {};
   if (status) where.status = status;
-  if (bookId) where.bookId = Number(bookId);
+  if (bookId) {
+    const normalizedBookId = String(bookId).trim();
+    if (isNumericPublicId(normalizedBookId)) {
+      where.bookId = Number(normalizedBookId);
+    } else {
+      const { books } = await resolveReviewTargetByPublicId(normalizedBookId);
+      where.bookId = { in: books.map((book) => book.id) };
+    }
+  }
 
   const reviews = await prisma.bookReview.findMany({
     where,
@@ -1248,37 +1465,11 @@ async function listAdminReviews({ status, bookId }) {
     orderBy: [{ createdAt: "desc" }],
   });
 
-  const groupCache = new Map();
-
-  for (const review of reviews) {
-    if (!review.book) continue;
-    const cacheKey = getBookPublicGroupCacheKey(review.book);
-    if (!groupCache.has(cacheKey)) {
-      const groupedBooks = await prisma.book.findMany({
-        where: {
-          normalizedTitle: normalizeTitle(review.book.title),
-        },
-        orderBy: [{ id: "asc" }],
-      });
-      const aggregated = aggregateBookGroup(
-        groupedBooks.filter((book) => getBookPublicGroupCacheKey(book) === cacheKey)
-      );
-      groupCache.set(cacheKey, {
-        id: aggregated.id,
-        title: aggregated.title,
-        author: aggregated.author,
-        publisher: aggregated.publisher,
-        barcodes: aggregated.barcodes,
-        groupBookCount: aggregated.groupBookCount,
-      });
-    }
-    review.groupedBook = groupCache.get(cacheKey);
-  }
-
+  await annotateReviews(reviews);
   return reviews.map(serializeReviewForAdmin);
 }
 
-async function updateReview(id, adminUserId, { action, finalContent, rejectionReason }) {
+async function updateReview(id, adminUserId, { action, finalContent }) {
   const review = await prisma.bookReview.findUnique({
     where: { id: Number(id) },
     include: { book: true },
@@ -1296,38 +1487,17 @@ async function updateReview(id, adminUserId, { action, finalContent, rejectionRe
     throw new HttpError(400, "评语内容不能为空");
   }
 
-  let data;
-  if (action === "approve") {
-    data = {
-      status: "approved",
-      finalContent: nextFinalContent,
-      reviewedAt,
-      reviewedById: adminUserId,
-      rejectionReason: null,
-      editedAt: edited ? reviewedAt : review.editedAt,
-      editedById: edited ? adminUserId : review.editedById,
-    };
-  } else if (action === "hide") {
-    data = {
-      status: "hidden",
-      finalContent: nextFinalContent,
-      reviewedAt,
-      reviewedById: adminUserId,
-      rejectionReason: null,
-      editedAt: edited ? reviewedAt : review.editedAt,
-      editedById: edited ? adminUserId : review.editedById,
-    };
-  } else {
-    data = {
-      status: "rejected",
-      finalContent: nextFinalContent,
-      reviewedAt,
-      reviewedById: adminUserId,
-      rejectionReason: rejectionReason || null,
-      editedAt: edited ? reviewedAt : review.editedAt,
-      editedById: edited ? adminUserId : review.editedById,
-    };
-  }
+  const data = {
+    status: action === "approve" ? "approved" : "hidden",
+    finalContent: nextFinalContent,
+    reviewedAt,
+    reviewedById: adminUserId,
+    editedAt: edited ? reviewedAt : review.editedAt,
+    editedById: edited ? adminUserId : review.editedById,
+    hiddenAt: action === "hide" ? reviewedAt : null,
+    isFeatured: action === "hide" ? false : review.isFeatured,
+    featuredOrder: action === "hide" ? null : review.featuredOrder,
+  };
 
   const updated = await prisma.bookReview.update({
     where: { id: review.id },
@@ -1335,13 +1505,259 @@ async function updateReview(id, adminUserId, { action, finalContent, rejectionRe
     include: { book: true },
   });
 
+  await annotateReviews([updated]);
   return serializeReviewForAdmin(updated);
+}
+
+function normalizeSensitiveWord(word) {
+  return String(word || "").normalize("NFKC").trim().toLowerCase();
+}
+
+function serializeSensitiveWord(word) {
+  return {
+    id: word.id,
+    word: word.word,
+    createdAt: word.createdAt,
+    updatedAt: word.updatedAt,
+  };
+}
+
+async function listSensitiveWords({ query, page = 1, pageSize = 20 } = {}) {
+  const normalizedPage = Math.max(1, Number(page) || 1);
+  const normalizedPageSize = Math.min(100, Math.max(1, Number(pageSize) || 20));
+  const trimmedQuery = String(query || "").trim();
+  const where = trimmedQuery
+    ? {
+        OR: [
+          { word: { contains: trimmedQuery } },
+          { normalizedWord: { contains: normalizeSensitiveWord(trimmedQuery) } },
+        ],
+      }
+    : {};
+
+  const [total, words] = await prisma.$transaction([
+    prisma.sensitiveWord.count({ where }),
+    prisma.sensitiveWord.findMany({
+      where,
+      orderBy: [{ word: "asc" }],
+      skip: (normalizedPage - 1) * normalizedPageSize,
+      take: normalizedPageSize,
+    }),
+  ]);
+
+  return {
+    words: words.map(serializeSensitiveWord),
+    pagination: {
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / normalizedPageSize)),
+    },
+  };
+}
+
+async function createSensitiveWord(word) {
+  const created = await prisma.sensitiveWord.create({
+    data: {
+      word: String(word || "").trim(),
+      normalizedWord: normalizeSensitiveWord(word),
+    },
+  });
+  return serializeSensitiveWord(created);
+}
+
+async function updateSensitiveWord(id, word) {
+  const updated = await prisma.sensitiveWord.update({
+    where: { id: Number(id) },
+    data: {
+      word: String(word || "").trim(),
+      normalizedWord: normalizeSensitiveWord(word),
+    },
+  });
+  return serializeSensitiveWord(updated);
+}
+
+async function deleteSensitiveWord(id) {
+  const removed = await prisma.sensitiveWord.delete({
+    where: { id: Number(id) },
+  });
+  return serializeSensitiveWord(removed);
+}
+
+async function getFeaturedReviews() {
+  const reviews = await prisma.bookReview.findMany({
+    where: {
+      status: "approved",
+      isFeatured: true,
+    },
+    include: { book: true },
+    orderBy: [{ featuredOrder: "asc" }, { reviewedAt: "desc" }, { id: "asc" }],
+    take: 10,
+  });
+
+  await annotateReviews(reviews, {
+    sequenceStatuses: PUBLIC_REVIEW_SEQUENCE_STATUSES,
+  });
+  return reviews.map(serializeFeaturedReview);
+}
+
+async function updateFeaturedReviews(reviewIds) {
+  const normalizedIds = reviewIds.map((id) => Number(id));
+  const reviews = await prisma.bookReview.findMany({
+    where: {
+      id: { in: normalizedIds },
+      status: "approved",
+    },
+  });
+
+  if (reviews.length !== normalizedIds.length) {
+    throw new HttpError(400, "精选留言必须来自已公开内容");
+  }
+
+  const approvedReviewCount = await prisma.bookReview.count({
+    where: { status: "approved" },
+  });
+  if (approvedReviewCount >= 3 && normalizedIds.length < 3) {
+    throw new HttpError(400, "至少保留 3 条精选留言");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.bookReview.updateMany({
+      where: { isFeatured: true },
+      data: {
+        isFeatured: false,
+        featuredOrder: null,
+      },
+    });
+
+    for (const [index, reviewId] of normalizedIds.entries()) {
+      await tx.bookReview.update({
+        where: { id: reviewId },
+        data: {
+          isFeatured: true,
+          featuredOrder: index,
+        },
+      });
+    }
+  });
+
+  return getFeaturedReviews();
+}
+
+function escapeCsvCell(value) {
+  const normalized = String(value ?? "");
+  if (/[",\n]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, "\"\"")}"`;
+  }
+  return normalized;
+}
+
+function formatCsvDate(value) {
+  if (!value) return "";
+  return new Date(value).toISOString();
+}
+
+async function exportAdminReviewsCsv() {
+  const reviews = await prisma.bookReview.findMany({
+    include: { book: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+
+  await annotateReviews(reviews);
+  const serialized = reviews.map(serializeReviewForAdmin);
+  const headers = [
+    "评论ID",
+    "状态",
+    "图书标题",
+    "公开显示名",
+    "学号",
+    "姓名",
+    "届别",
+    "班级",
+    "身份证后四位",
+    "原文",
+    "最终展示文本",
+    "是否精选",
+    "敏感词命中",
+    "命中词",
+    "创建时间",
+    "审核时间",
+    "隐藏时间",
+  ];
+
+  const lines = [
+    headers.map(escapeCsvCell).join(","),
+    ...serialized.map((review) =>
+      [
+        review.id,
+        review.status,
+        review.groupedBook?.title || review.book?.title || "",
+        review.displayName,
+        review.studentIdentity?.systemId || "",
+        review.studentIdentity?.studentName || "",
+        review.studentIdentity?.cohort || "",
+        review.studentIdentity?.className || "",
+        review.studentIdentity?.idCardSuffix || "",
+        review.originalContent,
+        review.finalContent,
+        review.isFeatured ? "是" : "否",
+        review.sensitiveHit ? "是" : "否",
+        review.matchedSensitiveWords.join("、"),
+        formatCsvDate(review.createdAt),
+        formatCsvDate(review.reviewedAt),
+        formatCsvDate(review.hiddenAt),
+      ]
+        .map(escapeCsvCell)
+        .join(",")
+    ),
+  ];
+
+  return `\uFEFF${lines.join("\n")}`;
+}
+
+async function getHomepageData() {
+  const approvedReviews = await prisma.bookReview.findMany({
+    where: { status: "approved" },
+    include: { book: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+
+  const groupCache = new Map();
+  const activityMap = new Map();
+
+  for (const review of approvedReviews) {
+    if (!review.book) continue;
+    const groupedBook = await getGroupedBookMeta(review.book, groupCache);
+    const current = activityMap.get(groupedBook.id) || {
+      id: groupedBook.id,
+      title: groupedBook.title,
+      messageCount: 0,
+    };
+    current.messageCount += 1;
+    activityMap.set(groupedBook.id, current);
+  }
+
+  const activityBooks = [...activityMap.values()]
+    .sort((left, right) => {
+      if (right.messageCount !== left.messageCount) {
+        return right.messageCount - left.messageCount;
+      }
+      return left.title.localeCompare(right.title, "zh-CN");
+    })
+    .slice(0, 10);
+
+  return {
+    activityBooks,
+    featuredReviews: await getFeaturedReviews(),
+  };
 }
 
 module.exports = {
   normalizeTitle,
+  normalizeSensitiveWord,
   searchBooks,
   getBookById,
+  getHomepageData,
   listApprovedReviews,
   createReview,
   importCatalogFromCsv,
@@ -1352,5 +1768,12 @@ module.exports = {
   updateBook,
   listAdminReviews,
   updateReview,
+  getFeaturedReviews,
+  updateFeaturedReviews,
+  exportAdminReviewsCsv,
+  listSensitiveWords,
+  createSensitiveWord,
+  updateSensitiveWord,
+  deleteSensitiveWord,
   decodeUploadFilename,
 };

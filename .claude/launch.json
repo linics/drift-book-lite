@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["drift-book-lite/backend/src/server.js"],
+      "port": 8080
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "drift-book-lite/frontend", "run", "dev"],
+      "port": 5174
+    },
+    {
+      "name": "admin-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "drift-book-lite/admin-frontend", "run", "dev"],
+      "port": 5175
+    }
+  ]
+}

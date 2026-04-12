@@ -21,6 +21,7 @@
 最容易踩坑的一点：
 
 - 如果 `FRONTEND_API_BASE_URL` 和 `ADMIN_FRONTEND_API_BASE_URL` 还写着 `http://localhost:8080/api`，那么只有部署机器自己能正常调用后端，局域网其他设备打开页面后会请求它们自己的 `localhost:8080`，结果就是页面能打开，但数据加载失败。
+- 如果 `APP_BASE_URL` 和 `ADMIN_APP_BASE_URL` 还写着 `http://localhost:5174/5175`，后端默认 CORS 也会继续把局域网访问当成跨域拒绝，结果就是页面能打开，但登录、搜索、提交留言都会失败。
 
 ## 先确认一件事：学生留言数据不会随意丢
 
@@ -70,8 +71,10 @@
 ├── drift-book-lite/
 │   ├── frontend/         # 学生端 React + Vite
 │   ├── admin-frontend/   # 管理端 React + Vite
-│   └── backend/          # Express + Prisma + SQLite
-├── materials/            # 学校 logo、轮播图等初始化素材
+│   ├── backend/          # Express + Prisma + SQLite
+│   └── resources/
+│       ├── default-site-assets/      # 默认首页图片（Logo、轮播图）
+│       └── default-sensitive-words/  # 默认敏感词快照
 ├── docker-compose.yml    # 推荐部署方式
 ├── .env.example          # 根目录部署环境变量模板
 ├── 图书信息.csv
@@ -94,8 +97,9 @@
 - 查看导入批次、失败行和导入统计
 - 修改图书信息
 - 审核、隐藏、驳回评语
+- 维护敏感词库并导入内置默认词条
 - 上传 Logo、轮播图
-- 从 `materials/` 初始化站点素材
+- 重新载入默认首页图片
 
 ### 后端
 
@@ -328,9 +332,11 @@ FRONTEND_PORT=5174
 ADMIN_FRONTEND_PORT=5175
 
 JWT_SECRET=please-change-this-to-a-long-random-string
-ADMIN_USERNAME=admin
+ADMIN_USERNAMES=admin1,admin2,admin3
 ADMIN_PASSWORD=please-change-this-password
 
+APP_BASE_URL=http://192.168.1.50:5174
+ADMIN_APP_BASE_URL=http://192.168.1.50:5175
 FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 ADMIN_FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 ```
@@ -341,7 +347,8 @@ ADMIN_FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 - `FRONTEND_PORT`：学生端页面端口
 - `ADMIN_FRONTEND_PORT`：管理端页面端口
 - `JWT_SECRET`：必须改成你自己的随机字符串
-- `ADMIN_USERNAME` / `ADMIN_PASSWORD`：初始管理员账号
+- `ADMIN_USERNAMES` / `ADMIN_PASSWORD`：初始管理员账号列表和默认密码
+- `APP_BASE_URL` / `ADMIN_APP_BASE_URL`：学生端、管理端页面本身的访问地址，后端默认会用它们生成允许的 CORS 来源
 - `FRONTEND_API_BASE_URL`：学生端页面里写死的 API 地址，局域网部署时必须写成部署机 IP
 - `ADMIN_FRONTEND_API_BASE_URL`：管理端页面里写死的 API 地址，局域网部署时也必须写成部署机 IP
 
@@ -472,13 +479,13 @@ Docker Compose 会创建两个卷：
 
 此外：
 
-- `materials/` 会只读挂载到后端容器，作为初始化素材来源
+- `drift-book-lite/resources/default-site-assets/` 会只读挂载到后端容器，作为默认首页图片来源
 
 备份时至少保留：
 
 - 项目根目录下的 `.env`
 - Docker 卷中的数据库和上传文件
-- `materials/` 目录
+- `drift-book-lite/resources/default-site-assets/` 目录
 
 #### 哪些动作通常是安全的
 
@@ -507,7 +514,7 @@ Docker Compose 会创建两个卷：
 - `.env`
 - `backend_data`
 - `backend_uploads`
-- `materials/`
+- `drift-book-lite/resources/default-site-assets/`
 
 #### 最小恢复原则
 
@@ -517,7 +524,7 @@ Docker Compose 会创建两个卷：
 2. 恢复 `.env`
 3. 恢复数据库卷和上传卷
 4. 确认局域网 IP 是否变化
-5. 如 IP 变化，修改 `FRONTEND_API_BASE_URL` 和 `ADMIN_FRONTEND_API_BASE_URL`
+5. 如 IP 变化，修改 `APP_BASE_URL`、`ADMIN_APP_BASE_URL`、`FRONTEND_API_BASE_URL` 和 `ADMIN_FRONTEND_API_BASE_URL`
 6. 执行：
 
 ```bash
@@ -537,7 +544,9 @@ docker compose up --build -d
 1. 备份数据库和上传目录
 2. 备份 `.env`
 3. 更新代码
-4. 如果部署机 IP 变化，修改 `.env` 中这两个变量：
+4. 如果部署机 IP 变化，修改 `.env` 中这四个变量：
+   - `APP_BASE_URL`
+   - `ADMIN_APP_BASE_URL`
    - `FRONTEND_API_BASE_URL`
    - `ADMIN_FRONTEND_API_BASE_URL`
 5. 重新执行：
@@ -556,8 +565,10 @@ docker compose up --build -d
 | `FRONTEND_PORT` | 学生端对外端口 | `5174` |
 | `ADMIN_FRONTEND_PORT` | 管理端对外端口 | `5175` |
 | `JWT_SECRET` | JWT 签名密钥 | `replace-with-random-secret` |
-| `ADMIN_USERNAME` | 管理员用户名 | `admin` |
+| `ADMIN_USERNAMES` | 管理员用户名列表 | `admin1,admin2,admin3` |
 | `ADMIN_PASSWORD` | 管理员密码 | `replace-with-strong-password` |
+| `APP_BASE_URL` | 学生端页面地址 | `http://192.168.1.50:5174` |
+| `ADMIN_APP_BASE_URL` | 管理端页面地址 | `http://192.168.1.50:5175` |
 | `FRONTEND_API_BASE_URL` | 学生端构建时写入的 API 地址 | `http://192.168.1.50:8080/api` |
 | `ADMIN_FRONTEND_API_BASE_URL` | 管理端构建时写入的 API 地址 | `http://192.168.1.50:8080/api` |
 
@@ -570,10 +581,12 @@ docker compose up --build -d
 | `DATABASE_URL` | Prisma 使用的 SQLite 地址 | `file:./dev.db` |
 | `PORT` | 后端监听端口 | `8080` |
 | `JWT_SECRET` | JWT 密钥 | `change-this-secret` |
-| `ADMIN_USERNAME` | 管理员用户名 | `admin` |
+| `ADMIN_USERNAMES` | 管理员用户名列表 | `admin1,admin2,admin3` |
 | `ADMIN_PASSWORD` | 管理员密码 | `change-this-password` |
 | `APP_BASE_URL` | 学生端地址 | `http://localhost:5174` |
-| `MATERIALS_DIR` | 素材目录路径 | 空 |
+| `ADMIN_APP_BASE_URL` | 管理端地址 | `http://localhost:5175` |
+| `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | `drift-book-lite/resources/default-site-assets` |
+| `DEFAULT_SENSITIVE_WORDS_DIR` | 默认敏感词目录路径 | `drift-book-lite/resources/default-sensitive-words` |
 
 ## 图书导入与素材
 
@@ -596,9 +609,25 @@ docker compose up --build -d
 
 ### 站点素材
 
-- `materials/` 可以存放学校 Logo 和轮播原图
-- 管理端可调用“从素材目录初始化”
+- `drift-book-lite/resources/default-site-assets/` 可以存放学校 Logo 和首页轮播原图
+- 文件命名约定：`logo.*` 作为学校 Logo，`carousel-01.*`、`carousel-02.*` 按顺序作为首页轮播图
+- 系统启动时会自动补齐缺失的 Logo 或轮播图
+- 管理端可调用“重新载入默认素材”恢复默认首页图片
+- 管理端显示的“当前默认目录”来自后端运行环境：Docker Compose 下通常是容器内路径 `/app/resources/default-site-assets`，无 Docker 部署时显示本机实际目录
+- 只要 `DEFAULT_SITE_ASSETS_DIR` 配置正确，其他部署电脑会自动显示各自环境中的路径提示
 - 最终访问资源通过 `/uploads` 暴露
+
+### 默认敏感词词库
+
+- 项目内置默认词库目录：`drift-book-lite/resources/default-sensitive-words/`
+- 当前默认快照采用中度扩容范围，共 7 类：广告、色情、涉枪涉爆、非法网址、暴恐、补充、贪腐
+- 后端会读取该目录下所有 `.txt` 文件；导入时执行 `NFKC + trim + lowercase` 归一化并按归一化结果去重
+- 管理端“敏感词库”页可调用“导入内置词库”把默认词条写入数据库
+- 管理端敏感词列表支持搜索与分页加载，避免词库扩大后一次性加载全部词条
+- 内置快照随项目代码一起部署，不依赖目标机器在运行时访问 GitHub
+- 默认快照不包含政治类型、反动词库、民生词库、新思想启蒙、GFW 补充、零时-Tencent、网易前端过滤敏感词库等高误判或大杂包类别
+- 如需替换默认目录，可在后端设置 `DEFAULT_SENSITIVE_WORDS_DIR`
+- 上游来源与快照说明见 [SOURCES.md](/Users/linics/Documents/githubfiles/library-management-system/drift-book-lite/resources/default-sensitive-words/SOURCES.md)
 
 ## 主要接口
 
@@ -615,6 +644,8 @@ docker compose up --build -d
 
 - `POST /api/admin/login`
 - `GET /api/admin/books`
+- `GET /api/admin/sensitive-words`
+- `POST /api/admin/sensitive-words/import-defaults`
 - `PATCH /api/admin/books/:bookId`
 - `POST /api/admin/imports`
 - `GET /api/admin/imports`
@@ -623,7 +654,7 @@ docker compose up --build -d
 - `GET /api/admin/reviews`
 - `PATCH /api/admin/reviews/:reviewId`
 - `GET /api/admin/assets`
-- `POST /api/admin/assets/bootstrap-from-materials`
+- `POST /api/admin/assets/reload-default-assets`
 - `POST /api/admin/assets/logo`
 - `POST /api/admin/assets/carousel`
 - `PATCH /api/admin/assets`
@@ -662,6 +693,8 @@ docker compose up --build -d
 ```env
 FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
 ADMIN_FRONTEND_API_BASE_URL=http://192.168.1.50:8080/api
+APP_BASE_URL=http://192.168.1.50:5174
+ADMIN_APP_BASE_URL=http://192.168.1.50:5175
 ```
 
 修改后重新构建：
@@ -700,7 +733,7 @@ docker compose up --build -d
 
 修改根目录 `.env` 里的：
 
-- `ADMIN_USERNAME`
+- `ADMIN_USERNAMES`
 - `ADMIN_PASSWORD`
 
 然后重启后端：

@@ -89,10 +89,12 @@ copy .env.example .env
 DATABASE_URL="file:./dev.db"
 PORT=8080
 JWT_SECRET="replace-with-a-long-random-string"
-ADMIN_USERNAME="admin"
+ADMIN_USERNAMES="admin1,admin2,admin3"
 ADMIN_PASSWORD="replace-with-a-strong-password"
 APP_BASE_URL="http://10.11.23.45:5174"
-MATERIALS_DIR="D:/your-path/library-management-system/materials"
+ADMIN_APP_BASE_URL="http://10.11.23.45:5175"
+DEFAULT_SITE_ASSETS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-site-assets"
+DEFAULT_SENSITIVE_WORDS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-sensitive-words"
 ```
 
 说明：
@@ -102,7 +104,15 @@ MATERIALS_DIR="D:/your-path/library-management-system/materials"
 - `JWT_SECRET`：必须改成自己的随机字符串
 - `ADMIN_PASSWORD`：必须改掉默认密码
 - `APP_BASE_URL`：学生端访问地址
-- `MATERIALS_DIR`：指向仓库根目录下的 `materials`
+- `ADMIN_APP_BASE_URL`：管理端访问地址，后端默认会把它加入允许的 CORS 来源
+- `DEFAULT_SITE_ASSETS_DIR`：指向 `drift-book-lite/resources/default-site-assets`
+- `DEFAULT_SENSITIVE_WORDS_DIR`：指向 `drift-book-lite/resources/default-sensitive-words`
+
+补充说明：
+
+- 管理端“站点素材”页里显示的默认素材目录提示，来自后端当前运行环境，不是前端写死文案。
+- 在 Windows 无 Docker 部署时，这里会显示你本机 `.env` 里配置的真实目录。
+- 只要换电脑后把 `DEFAULT_SITE_ASSETS_DIR` 改成新机器上的实际路径，页面提示会自动跟着变化。
 
 安装并初始化：
 
@@ -210,6 +220,11 @@ npx.cmd serve -s dist -l 5175
 - `5174`
 - `5175`
 
+首次进入管理端后，建议再验证两项：
+
+- “站点素材”页能看到当前默认目录，并与 `.env` 中的 `DEFAULT_SITE_ASSETS_DIR` 一致
+- “敏感词库”页可执行“导入内置词库”，把仓库内置的 7 类默认词条导入数据库
+
 ## 为什么需要 3 个窗口
 
 因为现在不是 Docker 部署，而是 3 个独立进程：
@@ -274,7 +289,7 @@ npm.cmd run build
 
 - `drift-book-lite/backend/dev.db`
 - `drift-book-lite/backend/uploads/`
-- 仓库根目录 `materials/`
+- `drift-book-lite/resources/default-site-assets/`
 - 各目录下实际使用的 `.env`
 
 至少要定期备份这些内容。

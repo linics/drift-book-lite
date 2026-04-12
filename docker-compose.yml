@@ -7,17 +7,27 @@ services:
       PORT: 8080
       DATABASE_URL: file:/data/dev.db
       JWT_SECRET: ${JWT_SECRET:-change-this-secret}
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_USERNAMES: ${ADMIN_USERNAMES:-admin1,admin2,admin3}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-this-password}
-      APP_BASE_URL: http://localhost:${FRONTEND_PORT:-5174}
-      MATERIALS_DIR: /app/materials
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:${FRONTEND_PORT:-5174}}
+      ADMIN_APP_BASE_URL: ${ADMIN_APP_BASE_URL:-http://localhost:${ADMIN_FRONTEND_PORT:-5175}}
+      DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets
+      DEFAULT_SENSITIVE_WORDS_DIR: /app/resources/default-sensitive-words
+      STUDENT_ROSTER_PATH: /app/resources/student-roster/2025学年学生信息.xls
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:
-      - ./materials:/app/materials:ro
+      - ./drift-book-lite/resources/default-site-assets:/app/resources/default-site-assets:ro
+      - ./drift-book-lite/resources/default-sensitive-words:/app/resources/default-sensitive-words:ro
+      - ./2025学年学生信息.xls:/app/resources/student-roster/2025学年学生信息.xls:ro
       - backend_data:/data
       - backend_uploads:/app/uploads
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   frontend:
     build:
@@ -28,7 +38,8 @@ services:
     ports:
       - "${FRONTEND_PORT:-5174}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
   admin-frontend:
@@ -40,7 +51,8 @@ services:
     ports:
       - "${ADMIN_FRONTEND_PORT:-5175}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
