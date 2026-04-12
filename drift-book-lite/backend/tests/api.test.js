@@ -205,6 +205,15 @@ describe("drift book lite api", () => {
     expect(importRes.body.message).toContain("重新登录");
   });
 
+  test("allows the default admin frontend origin through cors", async () => {
+    const response = await request(app)
+      .get("/api/health")
+      .set("Origin", "http://localhost:5175");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5175");
+  });
+
   test("upsert mode updates an existing catalog record", async () => {
     await importCsv(
       Buffer.from(

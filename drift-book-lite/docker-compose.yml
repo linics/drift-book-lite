@@ -12,10 +12,16 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5174}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5174,http://localhost:5175}
+      DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets
+      DEFAULT_SENSITIVE_WORDS_DIR: /app/resources/default-sensitive-words
+      STUDENT_ROSTER_PATH: /app/resources/student-roster/2025学年学生信息.xls
       NODE_ENV: production
     volumes:
       - db_data:/data
       - uploads_data:/app/uploads
+      - ./resources/default-site-assets:/app/resources/default-site-assets:ro
+      - ./resources/default-sensitive-words:/app/resources/default-sensitive-words:ro
+      - ../2025学年学生信息.xls:/app/resources/student-roster/2025学年学生信息.xls:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
@@ -26,6 +32,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${FRONTEND_API_BASE_URL:-http://localhost:8080/api}
     ports:
       - "5174:80"
     depends_on:
@@ -36,6 +44,8 @@ services:
   admin-frontend:
     build:
       context: ./admin-frontend
+      args:
+        VITE_API_BASE_URL: ${ADMIN_FRONTEND_API_BASE_URL:-http://localhost:8080/api}
     ports:
       - "5175:80"
     depends_on:

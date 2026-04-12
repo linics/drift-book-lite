@@ -13,11 +13,14 @@ async function createApp() {
   await bootstrapSystem();
 
   const app = express();
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || appBaseUrl)
-    .split(",")
+  const allowedOrigins = (
+    process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(",")
+      : [appBaseUrl, process.env.ADMIN_APP_BASE_URL || "http://localhost:5175"]
+  )
     .map((s) => s.trim())
     .filter(Boolean);
-  app.use(cors({ origin: allowedOrigins, credentials: true }));
+  app.use(cors({ origin: [...new Set(allowedOrigins)], credentials: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use("/uploads", express.static(uploadsDir));

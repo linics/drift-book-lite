@@ -1,7 +1,7 @@
 const express = require("express");
 const { z } = require("zod");
 const { prisma } = require("../lib/prisma");
-const { defaultSiteAssetsDir } = require("../lib/env");
+const { adminUsernames, defaultSiteAssetsDir } = require("../lib/env");
 const { signAdminToken, verifyPassword } = require("../utils/auth");
 const { requireAdmin } = require("../middleware/adminAuth");
 const { uploadMemory, uploadSiteAsset } = require("../middleware/uploads");
@@ -93,7 +93,7 @@ function toAdminAssetResponse(assets) {
 router.post("/login", async (req, res) => {
   const { username, password } = loginSchema.parse(req.body);
   const adminUser = await prisma.adminUser.findUnique({ where: { username } });
-  if (!adminUser) {
+  if (!adminUser || !adminUsernames.includes(username)) {
     throw new HttpError(401, "账号或密码错误");
   }
 

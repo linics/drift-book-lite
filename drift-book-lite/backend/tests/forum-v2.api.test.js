@@ -1,4 +1,5 @@
 const request = require("supertest");
+const bcrypt = require("bcryptjs");
 const { prisma } = require("../src/lib/prisma");
 const { createApp } = require("../src/app");
 
@@ -91,6 +92,22 @@ describe("forum v2 api", () => {
     await loginAs("admin1");
     await loginAs("admin2");
     await loginAs("admin3");
+  });
+
+  test("rejects admin accounts not present in configured usernames", async () => {
+    await prisma.adminUser.create({
+      data: {
+        username: "admin",
+        passwordHash: await bcrypt.hash("old-password", 10),
+      },
+    });
+
+    const response = await request(app).post("/api/admin/login").send({
+      username: "admin",
+      password: "old-password",
+    });
+
+    expect(response.status).toBe(401);
   });
 
   test("queues verified student messages and exposes approved public chain with cohort identity", async () => {

@@ -38,7 +38,9 @@ module.exports = {
   defaultSensitiveWordsDir:
     process.env.DEFAULT_SENSITIVE_WORDS_DIR ||
     path.resolve(projectRoot, "resources", "default-sensitive-words"),
-  studentRosterPath: process.env.STUDENT_ROSTER_PATH || "",
+  studentRosterPath:
+    process.env.STUDENT_ROSTER_PATH ||
+    path.resolve(projectRoot, "..", "2025学年学生信息.xls"),
   uploadsDir: process.env.UPLOADS_DIR
     ? path.resolve(process.env.UPLOADS_DIR)
     : path.resolve(projectRoot, "uploads"),
