@@ -54,9 +54,15 @@ async function ensureStudentRoster() {
   const rows = loadStudentRosterRows();
   if (rows.length === 0) return;
 
-  await prisma.$transaction(
-    rows.map((row) =>
-      prisma.studentRoster.upsert({
+  await prisma.$transaction(async (tx) => {
+    await tx.studentRoster.deleteMany({
+      where: {
+        systemId: { notIn: rows.map((row) => row.systemId) },
+      },
+    });
+
+    for (const row of rows) {
+      await tx.studentRoster.upsert({
         where: { systemId: row.systemId },
         update: {
           studentName: row.studentName,
@@ -66,9 +72,9 @@ async function ensureStudentRoster() {
           idCardSuffix: row.idCardSuffix,
         },
         create: row,
-      })
-    )
-  );
+      });
+    }
+  });
 }
 
 module.exports = {

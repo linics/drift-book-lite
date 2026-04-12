@@ -167,6 +167,87 @@ describe("forum v2 api", () => {
     ]);
   });
 
+  test("keeps public and featured sequence numbers contiguous when invisible reviews exist", async () => {
+    const adminToken = await loginAs("admin1");
+    const book = await importSingleBook(adminToken, "连续层号图书");
+    const internalBook = await prisma.book.findFirst({
+      where: { title: "连续层号图书" },
+      select: { id: true },
+    });
+    const reviewedAt = new Date("2026-01-02T03:04:05.000Z");
+
+    expect(internalBook).toBeTruthy();
+
+    await prisma.bookReview.create({
+      data: {
+        bookId: internalBook.id,
+        displayName: "2025届 待审核同学",
+        originalContent: "这条仍在待审核",
+        finalContent: "这条仍在待审核",
+        status: "pending",
+        identityType: "student",
+        studentSystemId: "320250010",
+        studentName: "待审核同学",
+        studentClassName: "高一(03)班",
+        studentIdCardSuffix: "1010",
+      },
+    });
+
+    await prisma.bookReview.create({
+      data: {
+        bookId: internalBook.id,
+        displayName: "2025届 已拒绝同学",
+        originalContent: "这条旧拒绝记录不应占公开层号",
+        finalContent: "这条旧拒绝记录不应占公开层号",
+        status: "rejected",
+        identityType: "student",
+        studentSystemId: "320250011",
+        studentName: "已拒绝同学",
+        studentClassName: "高一(04)班",
+        studentIdCardSuffix: "1111",
+        rejectionReason: "legacy row",
+        reviewedAt,
+      },
+    });
+
+    const approvedReview = await prisma.bookReview.create({
+      data: {
+        bookId: internalBook.id,
+        displayName: "2025届 公开同学",
+        originalContent: "这是唯一公开的一层",
+        finalContent: "这是唯一公开的一层",
+        status: "approved",
+        identityType: "student",
+        studentSystemId: "320250012",
+        studentName: "公开同学",
+        studentClassName: "高一(05)班",
+        studentIdCardSuffix: "1212",
+        isFeatured: true,
+        featuredOrder: 0,
+        reviewedAt,
+      },
+    });
+
+    const publicResponse = await request(app).get(`/api/books/${book.id}/reviews`);
+    expect(publicResponse.status).toBe(200);
+    expect(publicResponse.body.reviews).toEqual([
+      expect.objectContaining({
+        id: approvedReview.id,
+        sequenceNumber: 1,
+        content: "这是唯一公开的一层",
+      }),
+    ]);
+
+    const homepageResponse = await request(app).get("/api/homepage");
+    expect(homepageResponse.status).toBe(200);
+    expect(homepageResponse.body.featuredReviews).toEqual([
+      expect.objectContaining({
+        id: approvedReview.id,
+        sequenceNumber: 1,
+      }),
+    ]);
+  });
+
   test("allows submission with only system id and name when the roster entry has no id card suffix", async () => {
     const adminToken = await loginAs("admin1");
     const book = await importSingleBook(adminToken, "无证件图书");

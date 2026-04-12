@@ -12,6 +12,7 @@ const {
 
 const SEARCH_CANDIDATE_LIMIT = 80;
 const SEARCH_BATCH_SIZE = 80;
+const PUBLIC_REVIEW_SEQUENCE_STATUSES = new Set(["approved"]);
 
 const requiredCatalogColumns = [
   "book_id",
@@ -744,9 +745,11 @@ function serializeFeaturedReview(review) {
   };
 }
 
-function buildSequenceMap(reviews) {
+function buildSequenceMap(reviews, { sequenceStatuses } = {}) {
   const activeReviews = [...reviews]
-    .filter((review) => review.status !== "hidden")
+    .filter((review) =>
+      sequenceStatuses ? sequenceStatuses.has(review.status) : review.status !== "hidden"
+    )
     .sort((left, right) => {
       const diff = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
       if (diff !== 0) return diff;
@@ -787,7 +790,7 @@ async function getGroupedBookMeta(book, cache = new Map()) {
   return meta;
 }
 
-async function annotateReviews(reviews) {
+async function annotateReviews(reviews, options = {}) {
   const groupedBookCache = new Map();
   const sequenceCache = new Map();
 
@@ -817,7 +820,7 @@ async function annotateReviews(reviews) {
         },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       });
-      sequenceCache.set(cacheKey, buildSequenceMap(groupedReviews));
+      sequenceCache.set(cacheKey, buildSequenceMap(groupedReviews, options));
     }
 
     review.sequenceNumber = sequenceCache.get(cacheKey).get(review.id) || null;
@@ -1070,7 +1073,9 @@ async function listApprovedReviews(bookId) {
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
 
-  await annotateReviews(reviews);
+  await annotateReviews(reviews, {
+    sequenceStatuses: PUBLIC_REVIEW_SEQUENCE_STATUSES,
+  });
   return reviews.map(serializeReviewForPublic);
 }
 
@@ -1590,7 +1595,9 @@ async function getFeaturedReviews() {
     take: 10,
   });
 
-  await annotateReviews(reviews);
+  await annotateReviews(reviews, {
+    sequenceStatuses: PUBLIC_REVIEW_SEQUENCE_STATUSES,
+  });
   return reviews.map(serializeFeaturedReview);
 }
 
