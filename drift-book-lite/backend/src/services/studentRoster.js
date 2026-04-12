@@ -28,7 +28,7 @@ function loadStudentRosterRows() {
     return [];
   }
   if (!fs.existsSync(studentRosterPath)) {
-    throw new Error(`Student roster file not found: ${studentRosterPath}`);
+    return [];
   }
 
   const workbook = XLSX.readFile(studentRosterPath, { cellDates: false });
