@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-set "ROOT=%~dp0"
+for %%I in ("%~dp0..\..") do set "ROOT=%%~fI\"
 cd /d "%ROOT%drift-book-lite\admin-frontend"
 
 if not exist "dist" (
@@ -12,6 +12,6 @@ if not exist "dist" (
 )
 
 echo Starting admin frontend from %CD%
-npx.cmd serve -s dist -l 5175
+npm.cmd run preview -- --host 0.0.0.0 --port 5175
 
 endlocal

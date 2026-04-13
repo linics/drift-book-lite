@@ -16,6 +16,12 @@
 
 不用 Docker 也能部署。
 
+如果你使用的是打包好的本地完整包，优先使用脚本：
+
+1. 双击 `scripts\windows\deploy-local-with-data.bat` 完成首次部署
+2. 后续双击 `scripts\windows\start-local-services.bat` 日常启动
+3. 需要备份数据时双击 `scripts\windows\backup-local-data.bat`
+
 最直接的方式是：
 
 1. 在 `backend` 启动后端
@@ -164,7 +170,7 @@ npm.cmd run build
 临时发布：
 
 ```cmd
-npx.cmd serve -s dist -l 5174
+npm.cmd run preview -- --host 0.0.0.0 --port 5174
 ```
 
 ## 目录 3：管理端部署
@@ -197,7 +203,7 @@ npm.cmd run build
 临时发布：
 
 ```cmd
-npx.cmd serve -s dist -l 5175
+npm.cmd run preview -- --host 0.0.0.0 --port 5175
 ```
 
 ## 首次验证
@@ -253,20 +259,20 @@ npm.cmd run dev
 
 ```cmd
 npm.cmd run build
-npx.cmd serve -s dist -l 5174
+npm.cmd run preview -- --host 0.0.0.0 --port 5174
 ```
 
 和：
 
 ```cmd
 npm.cmd run build
-npx.cmd serve -s dist -l 5175
+npm.cmd run preview -- --host 0.0.0.0 --port 5175
 ```
 
 原因：
 
 - `vite dev` 适合开发，不适合正式长期运行
-- `build + serve` 更稳定，也更接近正式部署
+- `build + preview` 更稳定，也更接近正式部署
 
 ### 2. 给部署电脑固定 IP
 

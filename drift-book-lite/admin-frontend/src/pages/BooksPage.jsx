@@ -214,7 +214,7 @@ export function BooksPage({ token, onLogout }) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,.xlsx"
+                accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 onChange={(event) =>
                   setImportForm((current) => ({
                     ...current,
@@ -225,7 +225,7 @@ export function BooksPage({ token, onLogout }) {
               />
               <div className="rounded-[1.8rem] border border-stone-200 bg-white/75 p-4">
                 <p className="text-sm text-stone-700">
-                  {importForm.file ? importForm.file.name : "尚未选择 CSV/XLSX 文件"}
+                  {importForm.file ? importForm.file.name : "尚未选择 CSV/XLS/XLSX 文件"}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <SecondaryButton
@@ -246,7 +246,7 @@ export function BooksPage({ token, onLogout }) {
           <div className="mt-8 space-y-4">
             <h4 className="font-semibold text-stone-900">导入历史</h4>
             {batches.length === 0 ? (
-              <EmptyState>暂无导入记录，先上传一份 CSV 或 XLSX 书目文件。</EmptyState>
+              <EmptyState>暂无导入记录，先上传一份 CSV、XLS 或 XLSX 书目文件。</EmptyState>
             ) : (
               batches.map((batch) => (
                 <div

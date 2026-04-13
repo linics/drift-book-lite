@@ -147,6 +147,17 @@ describe("BooksPage", () => {
     expect(screen.getByText(/若 book_id 已存在，该行会失败/)).toBeInTheDocument();
   });
 
+  test("allows selecting csv, xls, and xlsx catalog files", async () => {
+    const { container } = wrap(<BooksPage token={TOKEN} onLogout={NOOP} />);
+
+    await screen.findByText("漂流书目");
+    const fileInput = container.querySelector('input[type="file"]');
+    expect(fileInput).toHaveAttribute("accept", expect.stringContaining(".csv"));
+    expect(fileInput).toHaveAttribute("accept", expect.stringContaining(".xls"));
+    expect(fileInput).toHaveAttribute("accept", expect.stringContaining(".xlsx"));
+    expect(screen.getByText(/CSV\/XLS\/XLSX/)).toBeInTheDocument();
+  });
+
   test("shows batch list when batches exist", async () => {
     mockGet.mockImplementation((path) => {
       if (path === "/admin/books") return Promise.resolve({ data: booksResponse });

@@ -168,6 +168,28 @@ describe("drift book lite api", () => {
     expect(importRes.body.batch.failedRows).toBe(0);
   });
 
+  test("imports gb18030 csv files created by spreadsheet software", async () => {
+    const gb18030Csv = Buffer.from(
+      "626f6f6b5f69642c7469746c652c617574686f722c7075626c69736865722c746f74616c5f636f706965732c617661696c61626c655f636f706965730a313030312cb9b2b2fab5b3d0fbd1d42cc2edbfcbcbbc2cc8cbc3f1b3f6b0e6c9e72c352c340a",
+      "hex"
+    );
+
+    const importRes = await importCsv(gb18030Csv, "图书信息.csv");
+
+    expect(importRes.status).toBe(201);
+    expect(importRes.body.batch.successRows).toBe(1);
+
+    const searchRes = await request(app).get("/api/books/search").query({ q: "共产党宣言" });
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body.books[0]).toEqual(
+      expect.objectContaining({
+        title: "共产党宣言",
+        author: "马克思",
+        publishers: ["人民出版社"],
+      })
+    );
+  });
+
   test("tracks failed rows with line numbers during import", async () => {
     const invalidCsv = Buffer.from(
       "book_id,title,author,publisher,total_copies,available_copies\n1001,测试书,作者甲,出版社甲,5,3\n1002,,作者乙,出版社乙,3,2\n",
@@ -429,6 +451,36 @@ describe("drift book lite api", () => {
       expect.objectContaining({
         title: "XLS 图书",
         author: "作者甲",
+      })
+    );
+  });
+
+  test("imports legacy xls catalog rows", async () => {
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet([
+      {
+        控制号: "xls-legacy-1",
+        书名: "旧版 XLS 图书",
+        作者: "作者乙",
+        出版社: "出版社乙",
+        复本数: 3,
+      },
+    ]);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+    const xlsBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xls" });
+
+    const importRes = await importCsv(xlsBuffer, "7floor.xls");
+    expect(importRes.status).toBe(201);
+    expect(importRes.body.batch.successRows).toBe(1);
+
+    const adminBooksRes = await request(app)
+      .get("/api/admin/books")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(adminBooksRes.status).toBe(200);
+    expect(adminBooksRes.body.books[0]).toEqual(
+      expect.objectContaining({
+        title: "旧版 XLS 图书",
+        author: "作者乙",
       })
     );
   });
