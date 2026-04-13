@@ -38,9 +38,21 @@ if errorlevel 1 (
 )
 
 if not exist "drift-book-lite\backend\prisma\dev.db" (
-  echo WARNING: drift-book-lite\backend\prisma\dev.db was not found.
-  echo The backend may create an empty database unless you restore a backup first.
-  echo.
+  if exist "package-data\backend-data\dev.db" (
+    echo Restoring packaged database to drift-book-lite\backend\prisma\dev.db...
+    if not exist "drift-book-lite\backend\prisma" mkdir "drift-book-lite\backend\prisma"
+    copy /Y "package-data\backend-data\dev.db" "drift-book-lite\backend\prisma\dev.db" >nul
+    if errorlevel 1 (
+      echo ERROR: Failed to restore package-data\backend-data\dev.db.
+      pause
+      exit /b 1
+    )
+  ) else (
+    echo WARNING: drift-book-lite\backend\prisma\dev.db was not found.
+    echo WARNING: package-data\backend-data\dev.db was not found either.
+    echo The backend may create an empty database unless you restore a backup first.
+    echo.
+  )
 )
 
 set "ROSTER_REL=package-data\student-roster.xls"
