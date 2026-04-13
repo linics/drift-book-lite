@@ -347,6 +347,99 @@ describe("drift book lite api", () => {
     );
   });
 
+  test("imports large create_only catalogs without per-row book lookup", async () => {
+    const findUniqueSpy = vi.spyOn(prisma.book, "findUnique");
+    try {
+      const csv = Buffer.from(
+        Array.from({ length: 1005 }, (_, index) => {
+          const suffix = String(index + 1).padStart(4, "0");
+          return `bulk-${suffix},批量图书${suffix},作者${suffix},出版社${suffix},2,1`;
+        }).join("\n").replace(
+          /^/,
+          "book_id,title,author,publisher,total_copies,available_copies\n"
+        ),
+        "utf8"
+      );
+
+      const importRes = await importCsv(csv, "bulk.csv");
+
+      expect(importRes.status).toBe(201);
+      expect(importRes.body.batch).toEqual(
+        expect.objectContaining({
+          successRows: 1005,
+          failedRows: 0,
+          status: "completed",
+        })
+      );
+      expect(findUniqueSpy).not.toHaveBeenCalled();
+      await expect(prisma.book.count()).resolves.toBe(1005);
+    } finally {
+      findUniqueSpy.mockRestore();
+    }
+  });
+
+  test("create_only import records duplicate book ids in the uploaded file as row failures", async () => {
+    const csv = Buffer.from(
+      "book_id,title,author,publisher,total_copies,available_copies\nsame-1,第一本,作者甲,出版社甲,2,1\nsame-1,第二本,作者乙,出版社乙,3,2\nsame-1,第三本,作者丙,出版社丙,4,3\n",
+      "utf8"
+    );
+
+    const importRes = await importCsv(csv, "duplicate-file.csv");
+
+    expect(importRes.status).toBe(201);
+    expect(importRes.body.batch).toEqual(
+      expect.objectContaining({
+        successRows: 1,
+        failedRows: 2,
+        status: "partial",
+      })
+    );
+
+    const detailRes = await request(app)
+      .get(`/api/admin/imports/${importRes.body.batch.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.batch.failures).toEqual([
+      expect.objectContaining({
+        rowNumber: 3,
+        bookId: "same-1",
+        message: expect.stringContaining("文件内重复"),
+      }),
+      expect.objectContaining({
+        rowNumber: 4,
+        bookId: "same-1",
+        message: expect.stringContaining("文件内重复"),
+      }),
+    ]);
+  });
+
+  test("upsert import keeps the last valid duplicate row from the uploaded file", async () => {
+    const csv = Buffer.from(
+      "book_id,title,author,publisher,total_copies,available_copies\nupsert-repeat,旧标题,作者甲,出版社甲,2,1\nupsert-repeat,最终标题,作者乙,出版社乙,5,4\n",
+      "utf8"
+    );
+
+    const importRes = await importCsv(csv, "upsert-repeat.csv", { importMode: "upsert" });
+
+    expect(importRes.status).toBe(201);
+    expect(importRes.body.batch).toEqual(
+      expect.objectContaining({
+        successRows: 2,
+        failedRows: 0,
+        status: "completed",
+      })
+    );
+    await expect(prisma.book.findUnique({ where: { bookId: "upsert-repeat" } })).resolves.toEqual(
+      expect.objectContaining({
+        title: "最终标题",
+        author: "作者乙",
+        publisher: "出版社乙",
+        totalCopies: 5,
+        availableCopies: 4,
+      })
+    );
+  });
+
   test("lists admin books with pagination metadata", async () => {
     const csv = Buffer.from(
       Array.from({ length: 3 }, (_, index) =>

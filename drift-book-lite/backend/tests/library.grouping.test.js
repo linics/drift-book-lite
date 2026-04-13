@@ -367,6 +367,51 @@ describe("library grouped book ids and aggregation", () => {
     );
   });
 
+  test("deleting a large batch with no reviews uses a short non-interactive transaction", async () => {
+    const batch = await prisma.importBatch.create({
+      data: {
+        fileName: "large-no-reviews.csv",
+        catalogName: "无评语大批次",
+        importMode: "create_only",
+        status: "completed",
+        totalRows: 1005,
+        successRows: 1005,
+        failedRows: 0,
+        failures: [],
+      },
+    });
+    const books = Array.from({ length: 1005 }, (_, index) => {
+      const suffix = String(index + 1).padStart(4, "0");
+      return {
+        bookId: `delete-large-${suffix}`,
+        title: `大批次删除书${suffix}`,
+        normalizedTitle: normalizeTitle(`大批次删除书${suffix}`),
+        author: "作者甲",
+        publisher: "出版社甲",
+        totalCopies: 1,
+        availableCopies: 1,
+        sourceImportBatchId: batch.id,
+      };
+    });
+    for (let index = 0; index < books.length; index += 200) {
+      await prisma.book.createMany({
+        data: books.slice(index, index + 200),
+      });
+    }
+    const transactionSpy = vi.spyOn(prisma, "$transaction");
+
+    try {
+      const result = await deleteImportBatch(batch.id);
+
+      expect(result.deletedBookCount).toBe(1005);
+      expect(transactionSpy).toHaveBeenCalledWith(expect.any(Array));
+      await expect(prisma.importBatch.findUnique({ where: { id: batch.id } })).resolves.toBeNull();
+      await expect(prisma.book.count({ where: { sourceImportBatchId: batch.id } })).resolves.toBe(0);
+    } finally {
+      transactionSpy.mockRestore();
+    }
+  });
+
   test("grouped primary author display strips role suffixes", async () => {
     await prisma.book.createMany({
       data: [

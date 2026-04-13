@@ -12,6 +12,7 @@ const {
 
 const SEARCH_CANDIDATE_LIMIT = 80;
 const SEARCH_BATCH_SIZE = 80;
+const DATABASE_BATCH_SIZE = 500;
 const PUBLIC_REVIEW_SEQUENCE_STATUSES = new Set(["approved"]);
 
 const requiredCatalogColumns = [
@@ -111,6 +112,14 @@ function parseInteger(value, fieldName, rowNumber) {
     throw new HttpError(400, `第 ${rowNumber} 行字段 ${fieldName} 不是有效整数`);
   }
   return parsed;
+}
+
+function chunkArray(items, size = DATABASE_BATCH_SIZE) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function parseCatalogCsv(buffer) {
@@ -223,6 +232,44 @@ function normalizeCsvCatalogRecord(record) {
     categoryLabel,
     totalCopies: record.total_copies,
     availableCopies: record.available_copies,
+  };
+}
+
+function buildCatalogBookData(record, rowNumber) {
+  const bookId = String(record.bookId || "").trim();
+  const title = String(record.title || "").trim();
+  const author = String(record.author || "").trim();
+  const publisher = String(record.publisher || "").trim();
+
+  if (!bookId || !title) {
+    throw new Error("缺少必填字段: bookId/title");
+  }
+
+  const totalCopies = parseInteger(record.totalCopies, "totalCopies", rowNumber);
+  const availableCopies = parseInteger(record.availableCopies, "availableCopies", rowNumber);
+
+  if (availableCopies > totalCopies) {
+    throw new Error("available_copies 不能大于 total_copies");
+  }
+
+  return {
+    bookId,
+    title,
+    normalizedTitle: normalizeTitle(title),
+    author,
+    publishPlace: record.publishPlace || null,
+    publisher,
+    publishDateText: record.publishDateText || null,
+    barcode: record.barcode || null,
+    isbn: record.isbn || null,
+    callNumber: record.callNumber || null,
+    subtitle: record.subtitle || null,
+    categoryCode: record.categoryCode || null,
+    categoryLabel: record.categoryLabel || null,
+    publishYear: record.publishYear || null,
+    publishDecade: record.publishDecade || null,
+    totalCopies,
+    availableCopies,
   };
 }
 
@@ -1152,76 +1199,12 @@ async function importCatalogFromCsv(buffer, { fileName, catalogName, importMode,
   });
 
   const failures = [];
-  let successRows = 0;
+  const validRows = [];
 
   for (const { rowNumber, record } of rows) {
     try {
-      const bookId = String(record.bookId || "").trim();
-      const title = String(record.title || "").trim();
-      const author = String(record.author || "").trim();
-      const publisher = String(record.publisher || "").trim();
-
-      if (!bookId || !title) {
-        throw new Error("缺少必填字段: bookId/title");
-      }
-
-      const totalCopies = parseInteger(record.totalCopies, "totalCopies", rowNumber);
-      const availableCopies = parseInteger(
-        record.availableCopies,
-        "availableCopies",
-        rowNumber
-      );
-
-      if (availableCopies > totalCopies) {
-        throw new Error("available_copies 不能大于 total_copies");
-      }
-
-      const data = {
-        bookId,
-        title,
-        normalizedTitle: normalizeTitle(title),
-        author,
-        publishPlace: record.publishPlace || null,
-        publisher,
-        publishDateText: record.publishDateText || null,
-        barcode: record.barcode || null,
-        isbn: record.isbn || null,
-        callNumber: record.callNumber || null,
-        subtitle: record.subtitle || null,
-        categoryCode: record.categoryCode || null,
-        categoryLabel: record.categoryLabel || null,
-        publishYear: record.publishYear || null,
-        publishDecade: record.publishDecade || null,
-        totalCopies,
-        availableCopies,
-      };
-
-      const existing = await prisma.book.findUnique({
-        where: { bookId },
-      });
-
-      if (existing && importMode === "create_only") {
-        throw new Error(`book_id ${bookId} 已存在`);
-      }
-
-      if (existing) {
-        await prisma.book.update({
-          where: { id: existing.id },
-          data: {
-            ...data,
-            sourceImportBatchId: batch.id,
-          },
-        });
-      } else {
-        await prisma.book.create({
-          data: {
-            ...data,
-            sourceImportBatchId: batch.id,
-          },
-        });
-      }
-
-      successRows += 1;
+      const data = buildCatalogBookData(record, rowNumber);
+      validRows.push({ rowNumber, bookId: data.bookId, data });
     } catch (error) {
       failures.push({
         rowNumber,
@@ -1231,6 +1214,55 @@ async function importCatalogFromCsv(buffer, { fileName, catalogName, importMode,
     }
   }
 
+  const existingBooksByBookId = await findExistingBooksByBookId(
+    [...new Set(validRows.map((row) => row.bookId))]
+  );
+  let successRows = 0;
+
+  if (importMode === "create_only") {
+    const seenBookIds = new Set();
+    const newRows = [];
+
+    for (const row of validRows) {
+      if (seenBookIds.has(row.bookId)) {
+        failures.push({
+          rowNumber: row.rowNumber,
+          bookId: row.bookId,
+          message: `book_id ${row.bookId} 文件内重复`,
+        });
+        continue;
+      }
+      seenBookIds.add(row.bookId);
+
+      if (existingBooksByBookId.has(row.bookId)) {
+        failures.push({
+          rowNumber: row.rowNumber,
+          bookId: row.bookId,
+          message: `book_id ${row.bookId} 已存在`,
+        });
+        continue;
+      }
+
+      newRows.push(row);
+    }
+
+    await createCatalogBooksInChunks(newRows, batch.id);
+    successRows = newRows.length;
+  } else {
+    const latestRowsByBookId = new Map();
+    for (const row of validRows) {
+      latestRowsByBookId.set(row.bookId, row);
+    }
+    const latestRows = [...latestRowsByBookId.values()];
+    const newRows = latestRows.filter((row) => !existingBooksByBookId.has(row.bookId));
+    const updateRows = latestRows.filter((row) => existingBooksByBookId.has(row.bookId));
+
+    await createCatalogBooksInChunks(newRows, batch.id);
+    await updateCatalogBooksInChunks(updateRows, existingBooksByBookId, batch.id);
+    successRows = validRows.length;
+  }
+
+  failures.sort((left, right) => left.rowNumber - right.rowNumber);
   const failedRows = failures.length;
   const status = successRows === 0 ? "failed" : failedRows > 0 ? "partial" : "completed";
 
@@ -1243,6 +1275,55 @@ async function importCatalogFromCsv(buffer, { fileName, catalogName, importMode,
       failures,
     },
   });
+}
+
+async function findExistingBooksByBookId(bookIds) {
+  const existingBooksByBookId = new Map();
+  for (const bookIdChunk of chunkArray(bookIds)) {
+    if (bookIdChunk.length === 0) continue;
+    const existingBooks = await prisma.book.findMany({
+      where: {
+        bookId: { in: bookIdChunk },
+      },
+      select: {
+        id: true,
+        bookId: true,
+      },
+    });
+    for (const book of existingBooks) {
+      existingBooksByBookId.set(book.bookId, book);
+    }
+  }
+  return existingBooksByBookId;
+}
+
+async function createCatalogBooksInChunks(rows, batchId) {
+  for (const rowChunk of chunkArray(rows)) {
+    if (rowChunk.length === 0) continue;
+    await prisma.book.createMany({
+      data: rowChunk.map((row) => ({
+        ...row.data,
+        sourceImportBatchId: batchId,
+      })),
+    });
+  }
+}
+
+async function updateCatalogBooksInChunks(rows, existingBooksByBookId, batchId) {
+  for (const rowChunk of chunkArray(rows)) {
+    if (rowChunk.length === 0) continue;
+    await prisma.$transaction(
+      rowChunk.map((row) =>
+        prisma.book.update({
+          where: { id: existingBooksByBookId.get(row.bookId).id },
+          data: {
+            ...row.data,
+            sourceImportBatchId: batchId,
+          },
+        })
+      )
+    );
+  }
 }
 
 async function listImportBatches() {
@@ -1349,81 +1430,111 @@ async function deleteImportBatch(id) {
   });
   const bookIds = books.map((book) => book.id);
 
-  await prisma.$transaction(async (tx) => {
-    if (bookIds.length > 0) {
-      const deletingBookIds = new Set(bookIds);
-      const targetIdsByPublicGroupCacheKey = new Map();
-      const reviewSourceIdsByTargetId = new Map();
-
-      for (const book of books) {
-        const publicGroupCacheKey = getBookPublicGroupCacheKey(book);
-        let targetBookId;
-        let groupedBooks;
-
-        if (targetIdsByPublicGroupCacheKey.has(publicGroupCacheKey)) {
-          targetBookId = targetIdsByPublicGroupCacheKey.get(publicGroupCacheKey);
-        } else {
-          groupedBooks = await loadGroupedBooksByIdentity(
-            getBookGroupIdentity(book),
-            tx,
-            {
-              respectPublisher: shouldRespectPublisherForPublicGrouping(
-                getBookGroupIdentity(book)
-              ),
-            }
-          );
-          targetBookId =
-            groupedBooks.find((candidate) => !deletingBookIds.has(candidate.id))?.id || null;
-          targetIdsByPublicGroupCacheKey.set(publicGroupCacheKey, targetBookId);
-        }
-
-        if (!groupedBooks) {
-          groupedBooks = await loadGroupedBooksByIdentity(
-            getBookGroupIdentity(book),
-            tx,
-            {
-              respectPublisher: shouldRespectPublisherForPublicGrouping(
-                getBookGroupIdentity(book)
-              ),
-            }
-          );
-        }
-
-        const representativeBookId = groupedBooks[0]?.id;
-        if (book.id !== representativeBookId) continue;
-        if (!targetBookId) continue;
-
-        const sourceIds = reviewSourceIdsByTargetId.get(targetBookId) || [];
-        sourceIds.push(book.id);
-        reviewSourceIdsByTargetId.set(targetBookId, sourceIds);
-      }
-
-      for (const [targetBookId, sourceBookIds] of reviewSourceIdsByTargetId.entries()) {
-        await tx.bookReview.updateMany({
-          where: {
-            bookId: { in: sourceBookIds },
-          },
-          data: {
-            bookId: targetBookId,
-          },
-        });
-      }
-
-      await tx.book.deleteMany({
-        where: { id: { in: bookIds } },
-      });
-    }
-
-    await tx.importBatch.delete({
-      where: { id: batchId },
-    });
-  });
+  if (bookIds.length === 0 || !(await hasReviewsForBookIds(bookIds))) {
+    await prisma.$transaction([
+      ...buildDeleteBookOperations(bookIds),
+      prisma.importBatch.delete({
+        where: { id: batchId },
+      }),
+    ]);
+  } else {
+    const reviewSourceIdsByTargetId = await buildReviewMigrationPlanForDeletedBooks(
+      books,
+      bookIds
+    );
+    await prisma.$transaction([
+      ...buildReviewMigrationOperations(reviewSourceIdsByTargetId),
+      ...buildDeleteBookOperations(bookIds),
+      prisma.importBatch.delete({
+        where: { id: batchId },
+      }),
+    ]);
+  }
 
   return {
     id: batch.id,
     catalogName: batch.catalogName,
     deletedBookCount: bookIds.length,
   };
+}
+
+async function hasReviewsForBookIds(bookIds) {
+  for (const bookIdChunk of chunkArray(bookIds)) {
+    if (bookIdChunk.length === 0) continue;
+    const reviewCount = await prisma.bookReview.count({
+      where: {
+        bookId: { in: bookIdChunk },
+      },
+    });
+    if (reviewCount > 0) return true;
+  }
+  return false;
+}
+
+function buildDeleteBookOperations(bookIds) {
+  return chunkArray(bookIds).map((bookIdChunk) =>
+    prisma.book.deleteMany({
+      where: {
+        id: { in: bookIdChunk },
+      },
+    })
+  );
+}
+
+async function buildReviewMigrationPlanForDeletedBooks(books, bookIds) {
+  const deletingBookIds = new Set(bookIds);
+  const targetIdsByPublicGroupCacheKey = new Map();
+  const groupedBooksByPublicGroupCacheKey = new Map();
+  const reviewSourceIdsByTargetId = new Map();
+
+  for (const book of books) {
+    const publicGroupCacheKey = getBookPublicGroupCacheKey(book);
+    let groupedBooks = groupedBooksByPublicGroupCacheKey.get(publicGroupCacheKey);
+
+    if (!groupedBooks) {
+      const identity = getBookGroupIdentity(book);
+      groupedBooks = await loadGroupedBooksByIdentity(identity, prisma, {
+        respectPublisher: shouldRespectPublisherForPublicGrouping(identity),
+      });
+      groupedBooksByPublicGroupCacheKey.set(publicGroupCacheKey, groupedBooks);
+    }
+
+    let targetBookId = targetIdsByPublicGroupCacheKey.get(publicGroupCacheKey);
+    if (!targetIdsByPublicGroupCacheKey.has(publicGroupCacheKey)) {
+      targetBookId =
+        groupedBooks.find((candidate) => !deletingBookIds.has(candidate.id))?.id || null;
+      targetIdsByPublicGroupCacheKey.set(publicGroupCacheKey, targetBookId);
+    }
+
+    const representativeBookId = groupedBooks[0]?.id;
+    if (book.id !== representativeBookId) continue;
+    if (!targetBookId) continue;
+
+    const sourceIds = reviewSourceIdsByTargetId.get(targetBookId) || [];
+    sourceIds.push(book.id);
+    reviewSourceIdsByTargetId.set(targetBookId, sourceIds);
+  }
+
+  return reviewSourceIdsByTargetId;
+}
+
+function buildReviewMigrationOperations(reviewSourceIdsByTargetId) {
+  const operations = [];
+  for (const [targetBookId, sourceBookIds] of reviewSourceIdsByTargetId.entries()) {
+    for (const sourceBookIdChunk of chunkArray(sourceBookIds)) {
+      operations.push(
+        prisma.bookReview.updateMany({
+          where: {
+            bookId: { in: sourceBookIdChunk },
+          },
+          data: {
+            bookId: targetBookId,
+          },
+        })
+      );
+    }
+  }
+  return operations;
 }
 
 async function updateBook(id, data) {
