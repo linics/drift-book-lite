@@ -30,6 +30,9 @@ function loadStudentRosterRows() {
   if (!fs.existsSync(studentRosterPath)) {
     return [];
   }
+  if (!fs.statSync(studentRosterPath).isFile()) {
+    return [];
+  }
 
   const workbook = XLSX.readFile(studentRosterPath, { cellDates: false });
   const firstSheetName = workbook.SheetNames[0];

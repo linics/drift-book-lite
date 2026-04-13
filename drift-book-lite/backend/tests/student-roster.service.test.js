@@ -97,6 +97,16 @@ describe("student roster service", () => {
     );
   });
 
+  test("skips roster import when configured roster path is a directory", async () => {
+    process.env.STUDENT_ROSTER_PATH = fs.mkdtempSync(path.join(os.tmpdir(), "student-roster-dir-"));
+
+    const { ensureStudentRoster } = loadStudentRosterModule();
+    await expect(ensureStudentRoster()).resolves.toBeUndefined();
+
+    const rows = await prisma.studentRoster.findMany();
+    expect(rows).toHaveLength(0);
+  });
+
   test("removes roster rows that disappeared from the latest workbook", async () => {
     process.env.STUDENT_ROSTER_PATH = writeRoster([
       {
