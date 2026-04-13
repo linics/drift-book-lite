@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-set "ROOT=%~dp0"
+for %%I in ("%~dp0..\..") do set "ROOT=%%~fI\"
 
 echo Building student frontend...
 cd /d "%ROOT%drift-book-lite\frontend"

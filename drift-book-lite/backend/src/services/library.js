@@ -335,7 +335,7 @@ function parseXlsxCatalog(buffer) {
 
 function parseCatalogFile(buffer, fileName = "") {
   const extension = path.extname(String(fileName || "")).toLowerCase();
-  if (extension === ".xlsx") {
+  if (extension === ".xls" || extension === ".xlsx") {
     return parseXlsxCatalog(buffer);
   }
   return parseCatalogCsv(buffer);

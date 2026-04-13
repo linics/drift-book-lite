@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-set "ROOT=%~dp0"
+for %%I in ("%~dp0..\..") do set "ROOT=%%~fI\"
 cd /d "%ROOT%drift-book-lite\backend"
 
 echo Starting backend from %CD%
