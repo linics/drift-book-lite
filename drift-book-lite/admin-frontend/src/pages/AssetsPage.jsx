@@ -16,6 +16,7 @@ export function AssetsPage({ token, onLogout }) {
   const [success, setSuccess] = useState("");
   const [carouselUploading, setCarouselUploading] = useState(false);
   const [defaultAssetReloading, setDefaultAssetReloading] = useState(false);
+  const [deletingCarouselId, setDeletingCarouselId] = useState("");
 
   async function loadAssets() {
     try {
@@ -89,6 +90,31 @@ export function AssetsPage({ token, onLogout }) {
       setError(requestMessage(requestError, "默认素材重载失败"));
     } finally {
       setDefaultAssetReloading(false);
+    }
+  }
+
+  async function handleDeleteCarousel(image) {
+    const confirmed = window.confirm(`确认删除轮播图“${image.label}”吗？`);
+    if (!confirmed) return;
+
+    setDeletingCarouselId(image.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.delete(`/admin/assets/carousel/${image.id}`, {
+        headers: authHeaders(token),
+      });
+      setAssets(response.data);
+      setSuccess("轮播图已删除。");
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+        return;
+      }
+      setError(requestMessage(requestError, "轮播图删除失败"));
+    } finally {
+      setDeletingCarouselId("");
     }
   }
 
@@ -191,6 +217,16 @@ export function AssetsPage({ token, onLogout }) {
                       </div>
                       <p className="text-sm font-semibold text-stone-900">{image.label}</p>
                       <p className="text-xs text-stone-500">{image.path}</p>
+                      <div>
+                        <SecondaryButton
+                          type="button"
+                          className="px-4 py-2 text-xs text-red-700"
+                          disabled={deletingCarouselId === image.id}
+                          onClick={() => handleDeleteCarousel(image)}
+                        >
+                          {deletingCarouselId === image.id ? "正在删除" : "删除轮播图"}
+                        </SecondaryButton>
+                      </div>
                     </div>
                   </div>
                 ))

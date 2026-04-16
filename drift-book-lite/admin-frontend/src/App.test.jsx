@@ -3,11 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const { mockGet, mockPost, mockPatch, mockPut } = vi.hoisted(() => ({
+const { mockGet, mockPost, mockPatch, mockPut, mockDelete } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
   mockPatch: vi.fn(),
   mockPut: vi.fn(),
+  mockDelete: vi.fn(),
 }));
 
 vi.mock("axios", () => ({
@@ -17,7 +18,7 @@ vi.mock("axios", () => ({
       post: mockPost,
       patch: mockPatch,
       put: mockPut,
-      delete: vi.fn(),
+      delete: mockDelete,
     }),
   },
 }));
@@ -28,11 +29,27 @@ import { BooksPage } from "./pages/BooksPage.jsx";
 import { ReviewsPage } from "./pages/ReviewsPage.jsx";
 import { FeaturedReviewsPage } from "./pages/FeaturedReviewsPage.jsx";
 import { SensitiveWordsPage } from "./pages/SensitiveWordsPage.jsx";
+import { AssetsPage } from "./pages/AssetsPage.jsx";
 import App from "./App.jsx";
 
 const TOKEN = "test-token";
 const NOOP = vi.fn();
 const ADMIN_TOKEN_KEY = "drift-book-admin-token";
+const assetsResponse = {
+  id: 1,
+  schoolLogoPath: "/uploads/site-assets/school-logo.jpg",
+  carouselImages: [
+    {
+      id: "slide-1",
+      path: "/uploads/site-assets/carousel-01.jpg",
+      enabled: true,
+      sortOrder: 0,
+      label: "校园轮播 1",
+    },
+  ],
+  processContent: [],
+  defaultSiteAssetsDir: "/tmp/default-site-assets",
+};
 
 function wrap(ui, path = "/") {
   return render(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>);
@@ -490,5 +507,90 @@ describe("SensitiveWordsPage", () => {
     expect(screen.getByText("默认词库不含政治类、GFW 补充、腾讯/网易大杂包等高误判类别。")).toBeInTheDocument();
     expect(screen.queryByText(/中度扩容默认词库/)).not.toBeInTheDocument();
     expect(screen.queryByText(/内置文件：/)).not.toBeInTheDocument();
+  });
+});
+
+describe("AssetsPage", () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockPost.mockReset();
+    mockDelete.mockReset();
+    mockGet.mockResolvedValue({ data: assetsResponse });
+    vi.restoreAllMocks();
+  });
+
+  test("shows a delete button for each carousel asset", async () => {
+    wrap(<AssetsPage token={TOKEN} onLogout={NOOP} />);
+
+    expect(await screen.findByText("校园轮播 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "删除轮播图" })).toBeInTheDocument();
+  });
+
+  test("deletes a carousel asset and shows success feedback", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    mockDelete.mockResolvedValue({
+      data: {
+        ...assetsResponse,
+        carouselImages: [],
+      },
+    });
+
+    wrap(<AssetsPage token={TOKEN} onLogout={NOOP} />);
+    const user = userEvent.setup();
+
+    await screen.findByText("校园轮播 1");
+    await user.click(screen.getByRole("button", { name: "删除轮播图" }));
+
+    expect(mockDelete).toHaveBeenCalledWith(
+      "/admin/assets/carousel/slide-1",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: `Bearer ${TOKEN}` }),
+      })
+    );
+    expect(await screen.findByText("轮播图已删除。")).toBeInTheDocument();
+    expect(screen.getByText("尚无轮播图，上传后即可显示。")).toBeInTheDocument();
+  });
+
+  test("shows a loading label while deleting a carousel asset", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    let resolveDelete;
+    mockDelete.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+
+    wrap(<AssetsPage token={TOKEN} onLogout={NOOP} />);
+    const user = userEvent.setup();
+
+    await screen.findByText("校园轮播 1");
+    await user.click(screen.getByRole("button", { name: "删除轮播图" }));
+
+    expect(screen.getByRole("button", { name: "正在删除" })).toBeDisabled();
+
+    resolveDelete({
+      data: {
+        ...assetsResponse,
+        carouselImages: [],
+      },
+    });
+
+    expect(await screen.findByText("轮播图已删除。")).toBeInTheDocument();
+  });
+
+  test("shows api errors when deleting a carousel asset fails", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    mockDelete.mockRejectedValue({
+      response: { data: { message: "轮播图不存在" } },
+    });
+
+    wrap(<AssetsPage token={TOKEN} onLogout={NOOP} />);
+    const user = userEvent.setup();
+
+    await screen.findByText("校园轮播 1");
+    await user.click(screen.getByRole("button", { name: "删除轮播图" }));
+
+    expect(await screen.findByText("轮播图不存在")).toBeInTheDocument();
   });
 });

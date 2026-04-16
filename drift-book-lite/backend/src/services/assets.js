@@ -39,6 +39,8 @@ const defaultProcessContent = [
   },
 ];
 
+const siteAssetsUploadsDir = path.resolve(uploadsDir, "site-assets");
+
 function sanitizeCarouselEntry(entry, index) {
   if (!entry?.path || typeof entry.path !== "string") {
     throw new HttpError(400, "轮播图缺少有效路径");
@@ -129,6 +131,42 @@ function copyIntoUploads(sourcePath, subdir, filename) {
   return normalizePublicPath(destination);
 }
 
+function resolveSiteAssetUploadPath(publicPath) {
+  if (typeof publicPath !== "string" || !publicPath.startsWith("/uploads/")) {
+    return null;
+  }
+
+  const relativePath = publicPath.slice("/uploads/".length);
+  const absolutePath = path.resolve(uploadsDir, relativePath);
+
+  if (
+    absolutePath !== siteAssetsUploadsDir &&
+    !absolutePath.startsWith(`${siteAssetsUploadsDir}${path.sep}`)
+  ) {
+    return null;
+  }
+
+  return absolutePath;
+}
+
+function deleteFileIfUnused(publicPath, assets) {
+  const absolutePath = resolveSiteAssetUploadPath(publicPath);
+  if (!absolutePath) {
+    return;
+  }
+
+  if (assets.schoolLogoPath === publicPath) {
+    return;
+  }
+
+  const stillReferenced = assets.carouselImages.some((image) => image.path === publicPath);
+  if (stillReferenced) {
+    return;
+  }
+
+  fs.rmSync(absolutePath, { force: true });
+}
+
 function isSupportedImageFile(filename) {
   return IMAGE_EXTENSIONS.has(path.extname(filename).toLowerCase());
 }
@@ -191,7 +229,7 @@ function buildDefaultCarouselImages(carouselFiles) {
   });
 }
 
-async function syncDefaultSiteAssets({ mode = "fill-missing" } = {}) {
+async function syncDefaultSiteAssets({ mode = "fill-missing", fillEmptyCarousel = false } = {}) {
   if (!["fill-missing", "replace-homepage-images"].includes(mode)) {
     throw new HttpError(400, "默认站点图片同步模式不合法");
   }
@@ -213,7 +251,11 @@ async function syncDefaultSiteAssets({ mode = "fill-missing" } = {}) {
       );
     }
 
-    if ((!Array.isArray(current.carouselImages) || current.carouselImages.length === 0) && carouselFiles.length) {
+    if (
+      fillEmptyCarousel &&
+      (!Array.isArray(current.carouselImages) || current.carouselImages.length === 0) &&
+      carouselFiles.length
+    ) {
       carouselImages = buildDefaultCarouselImages(carouselFiles);
     }
   }
@@ -279,6 +321,22 @@ async function uploadCarouselAsset(file, label) {
   return updated.carouselImages[updated.carouselImages.length - 1];
 }
 
+async function deleteCarouselAsset(assetId) {
+  const current = await getSiteAsset();
+  const targetAsset = current.carouselImages.find((image) => image.id === assetId);
+
+  if (!targetAsset) {
+    throw new HttpError(404, "轮播图不存在");
+  }
+
+  const updated = await updateSiteAsset({
+    carouselImages: current.carouselImages.filter((image) => image.id !== assetId),
+  });
+
+  deleteFileIfUnused(targetAsset.path, updated);
+  return updated;
+}
+
 module.exports = {
   defaultProcessContent,
   getSiteAsset,
@@ -287,4 +345,5 @@ module.exports = {
   syncDefaultSiteAssets,
   uploadLogoAsset,
   uploadCarouselAsset,
+  deleteCarouselAsset,
 };

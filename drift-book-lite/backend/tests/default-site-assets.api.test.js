@@ -206,4 +206,82 @@ describe("default site assets bootstrap", () => {
       fs.rmSync(defaultSiteAssetsDir, { recursive: true, force: true });
     }
   });
+
+  test("deleting a default carousel only removes the uploaded copy and keeps source files intact", async () => {
+    await clearData();
+
+    const defaultSiteAssetsDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "default-site-assets-")
+    );
+
+    try {
+      writeFixtureFile(defaultSiteAssetsDir, "logo.png");
+      writeFixtureFile(defaultSiteAssetsDir, "carousel-01.jpg");
+      writeFixtureFile(defaultSiteAssetsDir, "carousel-02.jpg");
+
+      const app = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
+      const login = await request(app).post("/api/admin/login").send({
+        username: "admin1",
+        password: "change-this-password",
+      });
+
+      const reloadRes = await request(app)
+        .post("/api/admin/assets/reload-default-assets")
+        .set("Authorization", `Bearer ${login.body.token}`);
+
+      expect(reloadRes.status).toBe(200);
+      const [firstSlide] = reloadRes.body.carouselImages;
+
+      const deleteRes = await request(app)
+        .delete(`/api/admin/assets/carousel/${firstSlide.id}`)
+        .set("Authorization", `Bearer ${login.body.token}`);
+
+      expect(deleteRes.status).toBe(200);
+      expect(fs.existsSync(path.join(defaultSiteAssetsDir, "carousel-01.jpg"))).toBe(true);
+      expect(fs.existsSync(path.join(defaultSiteAssetsDir, "carousel-02.jpg"))).toBe(true);
+      expect(fs.existsSync(path.join(defaultSiteAssetsDir, "logo.png"))).toBe(true);
+    } finally {
+      fs.rmSync(defaultSiteAssetsDir, { recursive: true, force: true });
+    }
+  });
+
+  test("keeps an intentionally empty carousel empty after restart bootstrap", async () => {
+    await clearData();
+
+    const defaultSiteAssetsDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "default-site-assets-")
+    );
+
+    try {
+      writeFixtureFile(defaultSiteAssetsDir, "logo.png");
+      writeFixtureFile(defaultSiteAssetsDir, "carousel-01.jpg");
+
+      const app = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
+      const login = await request(app).post("/api/admin/login").send({
+        username: "admin1",
+        password: "change-this-password",
+      });
+
+      const initialAssets = await request(app).get("/api/site-assets");
+      expect(initialAssets.status).toBe(200);
+      expect(initialAssets.body.carouselImages).toHaveLength(1);
+
+      const [firstSlide] = initialAssets.body.carouselImages;
+      const deleteRes = await request(app)
+        .delete(`/api/admin/assets/carousel/${firstSlide.id}`)
+        .set("Authorization", `Bearer ${login.body.token}`);
+
+      expect(deleteRes.status).toBe(200);
+      expect(deleteRes.body.carouselImages).toEqual([]);
+
+      const restartedApp = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
+      const restartedAssets = await request(restartedApp).get("/api/site-assets");
+
+      expect(restartedAssets.status).toBe(200);
+      expect(restartedAssets.body.carouselImages).toEqual([]);
+      expect(restartedAssets.body.schoolLogoPath).toContain("/uploads/site-assets/school-logo");
+    } finally {
+      fs.rmSync(defaultSiteAssetsDir, { recursive: true, force: true });
+    }
+  });
 });
