@@ -1,3 +1,4 @@
+const compression = require("compression");
 const express = require("express");
 const cors = require("cors");
 const { z } = require("zod");
@@ -20,6 +21,7 @@ async function createApp() {
   )
     .map((s) => s.trim())
     .filter(Boolean);
+  app.use(compression());
   app.use(cors({ origin: [...new Set(allowedOrigins)], credentials: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

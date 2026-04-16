@@ -892,10 +892,25 @@ async function resolveStudentIdentity({ systemId, studentName, idCardSuffix }) {
   return roster;
 }
 
+let _sensitiveWordsCache = null;
+let _sensitiveWordsCacheAt = 0;
+const SENSITIVE_WORDS_TTL = 60_000;
+
+async function loadSensitiveWords() {
+  if (_sensitiveWordsCache && Date.now() - _sensitiveWordsCacheAt < SENSITIVE_WORDS_TTL) {
+    return _sensitiveWordsCache;
+  }
+  _sensitiveWordsCache = await prisma.sensitiveWord.findMany({ orderBy: [{ word: "asc" }] });
+  _sensitiveWordsCacheAt = Date.now();
+  return _sensitiveWordsCache;
+}
+
+function invalidateSensitiveWordsCache() {
+  _sensitiveWordsCache = null;
+}
+
 async function detectSensitiveWords(content) {
-  const sensitiveWords = await prisma.sensitiveWord.findMany({
-    orderBy: [{ word: "asc" }],
-  });
+  const sensitiveWords = await loadSensitiveWords();
   const normalizedContent = normalizeReviewContent(content);
   const matchedSensitiveWords = [
     ...new Set(
@@ -1826,7 +1841,25 @@ async function exportAdminReviewsCsv() {
   return `\uFEFF${lines.join("\n")}`;
 }
 
+let _homepageCache = null;
+let _homepageCacheAt = 0;
+const HOMEPAGE_TTL = 30_000;
+
+function invalidateHomepageCache() {
+  _homepageCache = null;
+}
+
 async function getHomepageData() {
+  if (_homepageCache && Date.now() - _homepageCacheAt < HOMEPAGE_TTL) {
+    return _homepageCache;
+  }
+  const result = await _buildHomepageData();
+  _homepageCache = result;
+  _homepageCacheAt = Date.now();
+  return result;
+}
+
+async function _buildHomepageData() {
   const approvedReviews = await prisma.bookReview.findMany({
     where: { status: "approved" },
     include: { book: true },
@@ -1887,4 +1920,6 @@ module.exports = {
   updateSensitiveWord,
   deleteSensitiveWord,
   decodeUploadFilename,
+  invalidateSensitiveWordsCache,
+  invalidateHomepageCache,
 };

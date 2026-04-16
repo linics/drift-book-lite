@@ -20,26 +20,31 @@ const createReviewSchema = z.object({
 
 router.get("/site-assets", async (_req, res) => {
   const assets = await getSiteAsset();
+  res.set("Cache-Control", "public, max-age=3600");
   res.json(assets);
 });
 
 router.get("/homepage", async (_req, res) => {
   const data = await getHomepageData();
+  res.set("Cache-Control", "public, max-age=30");
   res.json(data);
 });
 
 router.get("/books/search", async (req, res) => {
   const books = await searchBooks(req.query.q);
+  res.set("Cache-Control", "public, max-age=30");
   res.json({ books });
 });
 
 router.get("/books/:bookId", async (req, res) => {
   const book = await getBookById(req.params.bookId);
+  res.set("Cache-Control", "public, max-age=60");
   res.json({ book });
 });
 
 router.get("/books/:bookId/reviews", async (req, res) => {
   const reviews = await listApprovedReviews(req.params.bookId);
+  res.set("Cache-Control", "public, max-age=30");
   res.json({ reviews });
 });
 

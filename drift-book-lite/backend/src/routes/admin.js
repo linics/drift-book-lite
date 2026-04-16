@@ -23,6 +23,8 @@ const {
   updateSensitiveWord,
   deleteSensitiveWord,
   decodeUploadFilename,
+  invalidateSensitiveWordsCache,
+  invalidateHomepageCache,
 } = require("../services/library");
 const {
   getSiteAsset,
@@ -225,6 +227,7 @@ router.get("/reviews/export", async (_req, res) => {
 router.patch("/reviews/:reviewId", async (req, res) => {
   const payload = updateReviewSchema.parse(req.body);
   const review = await updateReview(req.params.reviewId, req.adminUser.sub, payload);
+  invalidateHomepageCache();
   res.json({ review });
 });
 
@@ -236,6 +239,7 @@ router.get("/featured-reviews", async (_req, res) => {
 router.put("/featured-reviews", async (req, res) => {
   const payload = featuredReviewsSchema.parse(req.body);
   const reviews = await updateFeaturedReviews(payload.reviewIds);
+  invalidateHomepageCache();
   res.json({ reviews });
 });
 
@@ -250,23 +254,27 @@ router.get("/sensitive-words", async (_req, res) => {
 
 router.post("/sensitive-words/import-defaults", async (_req, res) => {
   const result = await importDefaultSensitiveWords();
+  invalidateSensitiveWordsCache();
   res.json(result);
 });
 
 router.post("/sensitive-words", async (req, res) => {
   const payload = sensitiveWordSchema.parse(req.body);
   const word = await createSensitiveWord(payload.word);
+  invalidateSensitiveWordsCache();
   res.status(201).json({ word });
 });
 
 router.patch("/sensitive-words/:wordId", async (req, res) => {
   const payload = sensitiveWordSchema.parse(req.body);
   const word = await updateSensitiveWord(req.params.wordId, payload.word);
+  invalidateSensitiveWordsCache();
   res.json({ word });
 });
 
 router.delete("/sensitive-words/:wordId", async (req, res) => {
   const word = await deleteSensitiveWord(req.params.wordId);
+  invalidateSensitiveWordsCache();
   res.json({ word });
 });
 
