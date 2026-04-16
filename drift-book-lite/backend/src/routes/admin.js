@@ -30,6 +30,7 @@ const {
   syncDefaultSiteAssets,
   uploadLogoAsset,
   uploadCarouselAsset,
+  deleteCarouselAsset,
 } = require("../services/assets");
 const { importDefaultSensitiveWords } = require("../services/defaultSensitiveWords");
 const { HttpError } = require("../utils/httpError");
@@ -287,6 +288,11 @@ router.post("/assets/logo", uploadSiteAsset.single("file"), async (req, res) => 
 router.post("/assets/carousel", uploadSiteAsset.single("file"), async (req, res) => {
   const asset = await uploadCarouselAsset(req.file, req.body.label);
   res.status(201).json({ asset });
+});
+
+router.delete("/assets/carousel/:assetId", async (req, res) => {
+  const assets = await deleteCarouselAsset(req.params.assetId);
+  res.json(toAdminAssetResponse(assets));
 });
 
 router.patch("/assets", async (req, res) => {

@@ -21,16 +21,25 @@ async function ensureAdminUsers() {
 }
 
 async function ensureSiteAsset() {
-  await prisma.siteAsset.upsert({
+  const existingSiteAsset = await prisma.siteAsset.findUnique({
     where: { id: 1 },
-    update: {},
-    create: {
+    select: { id: true },
+  });
+
+  if (existingSiteAsset) {
+    return { created: false };
+  }
+
+  await prisma.siteAsset.create({
+    data: {
       id: 1,
       schoolLogoPath: null,
       carouselImages: [],
       processContent: defaultProcessContent,
     },
   });
+
+  return { created: true };
 }
 
 async function migrateLegacyReviews() {
@@ -44,8 +53,11 @@ async function migrateLegacyReviews() {
 
 async function bootstrapSystem() {
   await ensureAdminUsers();
-  await ensureSiteAsset();
-  await syncDefaultSiteAssets({ mode: "fill-missing" });
+  const siteAsset = await ensureSiteAsset();
+  await syncDefaultSiteAssets({
+    mode: "fill-missing",
+    fillEmptyCarousel: siteAsset.created,
+  });
   await ensureStudentRoster();
   await migrateLegacyReviews();
 }

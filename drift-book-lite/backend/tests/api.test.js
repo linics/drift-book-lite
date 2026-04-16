@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const request = require("supertest");
 const XLSX = require("xlsx");
@@ -73,6 +74,13 @@ async function importCsv(csv, filename = "catalog.csv", extraFields = {}) {
   return requestBuilder;
 }
 
+function resolveUploadedAssetPath(publicPath) {
+  return path.join(
+    process.env.UPLOADS_DIR,
+    publicPath.replace(/^\/uploads\//, "")
+  );
+}
+
 describe("drift book lite api", () => {
   beforeAll(async () => {
     app = await createApp();
@@ -120,6 +128,80 @@ describe("drift book lite api", () => {
         }),
       ])
     );
+  });
+
+  test("deletes a carousel asset, compacts sort order, and removes the uploaded file", async () => {
+    const firstUploadRes = await request(app)
+      .post("/api/admin/assets/carousel")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", path.join(siteAssetFixtureDir, "carousel-03.jpg"))
+      .field("label", "轮播一");
+    const secondUploadRes = await request(app)
+      .post("/api/admin/assets/carousel")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", path.join(siteAssetFixtureDir, "carousel-05.jpg"))
+      .field("label", "轮播二");
+
+    const deletedAsset = firstUploadRes.body.asset;
+    const survivingAsset = secondUploadRes.body.asset;
+    const deletedAssetPath = resolveUploadedAssetPath(deletedAsset.path);
+
+    expect(fs.existsSync(deletedAssetPath)).toBe(true);
+
+    const deleteRes = await request(app)
+      .delete(`/api/admin/assets/carousel/${deletedAsset.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.carouselImages).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: deletedAsset.id })])
+    );
+    expect(deleteRes.body.carouselImages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: survivingAsset.id,
+          label: "轮播二",
+          sortOrder: survivingAsset.sortOrder - 1,
+        }),
+      ])
+    );
+    expect(fs.existsSync(deletedAssetPath)).toBe(false);
+  });
+
+  test("keeps the uploaded file when another asset still references it", async () => {
+    const carouselRes = await request(app)
+      .post("/api/admin/assets/carousel")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", path.join(siteAssetFixtureDir, "carousel-06.jpg"))
+      .field("label", "共享文件轮播");
+    const asset = carouselRes.body.asset;
+    const uploadedPath = resolveUploadedAssetPath(asset.path);
+
+    await prisma.siteAsset.update({
+      where: { id: 1 },
+      data: {
+        schoolLogoPath: asset.path,
+      },
+    });
+
+    const deleteRes = await request(app)
+      .delete(`/api/admin/assets/carousel/${asset.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.carouselImages).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: asset.id })])
+    );
+    expect(fs.existsSync(uploadedPath)).toBe(true);
+  });
+
+  test("returns 404 when deleting a missing carousel asset", async () => {
+    const deleteRes = await request(app)
+      .delete("/api/admin/assets/carousel/missing-slide")
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(deleteRes.status).toBe(404);
+    expect(deleteRes.body.message).toContain("轮播图不存在");
   });
 
   test("imports a gb18030 catalog and exposes search plus book detail", async () => {
