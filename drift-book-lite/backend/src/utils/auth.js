@@ -4,7 +4,12 @@ const { jwtSecret } = require("../lib/env");
 
 function signAdminToken(adminUser) {
   return jwt.sign(
-    { sub: adminUser.id, username: adminUser.username, role: "admin" },
+    {
+      sub: adminUser.id,
+      username: adminUser.username,
+      passwordVersion: adminUser.passwordVersion,
+      role: "admin",
+    },
     jwtSecret,
     { expiresIn: "24h" }
   );

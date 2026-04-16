@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { requestMessage } from "../lib/api.js";
 import { useAdminSession } from "../lib/auth.js";
@@ -9,15 +9,28 @@ import { TextInput } from "../components/Input.jsx";
 import { PrimaryButton } from "../components/Button.jsx";
 import { StatusMessage } from "../components/StatusMessage.jsx";
 
+const LOGIN_MESSAGE_KEY = "drift-book-admin-login-message";
+
 export function AdminLoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { token, setToken } = useAdminSession();
+  const [sessionMessage] = useState(() => {
+    const message = window.sessionStorage.getItem(LOGIN_MESSAGE_KEY) || "";
+    window.sessionStorage.removeItem(LOGIN_MESSAGE_KEY);
+    return message;
+  });
   const [formState, setFormState] = useState({
     username: "admin1",
     password: "change-this-password",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const successMessage =
+    location.state?.message ||
+    sessionMessage ||
+    (searchParams.get("passwordChanged") === "1" ? "密码已更新，请使用新密码登录。" : "");
 
   useEffect(() => {
     if (token) {
@@ -76,7 +89,7 @@ export function AdminLoginPage() {
                 }
               />
             </Field>
-            <StatusMessage error={error} />
+            <StatusMessage error={error} success={!error ? successMessage : ""} />
             <PrimaryButton type="submit" disabled={loading} className="w-full">
               {loading ? "正在登录" : "进入后台"}
             </PrimaryButton>

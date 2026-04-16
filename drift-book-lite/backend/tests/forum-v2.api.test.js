@@ -124,6 +124,107 @@ describe("forum v2 api", () => {
     expect(response.status).toBe(401);
   });
 
+  test("does not overwrite an existing admin password during bootstrap", async () => {
+    await clearData();
+    await prisma.adminUser.create({
+      data: {
+        username: "admin1",
+        passwordHash: await bcrypt.hash("kept-password", 10),
+      },
+    });
+
+    app = await createApp();
+
+    const oldPasswordLogin = await request(app).post("/api/admin/login").send({
+      username: "admin1",
+      password: "kept-password",
+    });
+    expect(oldPasswordLogin.status).toBe(200);
+
+    const defaultPasswordLogin = await request(app).post("/api/admin/login").send({
+      username: "admin1",
+      password: "change-this-password",
+    });
+    expect(defaultPasswordLogin.status).toBe(401);
+  });
+
+  test("lets an admin change their own password and invalidates old tokens", async () => {
+    const oldToken = await loginAs("admin1");
+
+    const changeResponse = await request(app)
+      .patch("/api/admin/me/password")
+      .set("Authorization", `Bearer ${oldToken}`)
+      .send({
+        currentPassword: "change-this-password",
+        newPassword: "new-admin-password",
+      });
+    expect(changeResponse.status).toBe(200);
+    expect(changeResponse.body.message).toContain("密码");
+
+    const oldPasswordLogin = await request(app).post("/api/admin/login").send({
+      username: "admin1",
+      password: "change-this-password",
+    });
+    expect(oldPasswordLogin.status).toBe(401);
+
+    const newPasswordLogin = await request(app).post("/api/admin/login").send({
+      username: "admin1",
+      password: "new-admin-password",
+    });
+    expect(newPasswordLogin.status).toBe(200);
+
+    const oldTokenResponse = await request(app)
+      .get("/api/admin/books")
+      .set("Authorization", `Bearer ${oldToken}`);
+    expect(oldTokenResponse.status).toBe(401);
+
+    await loginAs("admin2");
+  });
+
+  test("rejects password changes with the wrong current password", async () => {
+    const adminToken = await loginAs("admin1");
+
+    const response = await request(app)
+      .patch("/api/admin/me/password")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        currentPassword: "wrong-password",
+        newPassword: "new-admin-password",
+      });
+
+    expect(response.status).toBe(401);
+    expect(response.body.message).toContain("当前密码");
+  });
+
+  test("rejects password changes when the new password is too short", async () => {
+    const adminToken = await loginAs("admin1");
+
+    const response = await request(app)
+      .patch("/api/admin/me/password")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        currentPassword: "change-this-password",
+        newPassword: "short",
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  test("rejects password changes when the new password matches the current password", async () => {
+    const adminToken = await loginAs("admin1");
+
+    const response = await request(app)
+      .patch("/api/admin/me/password")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        currentPassword: "change-this-password",
+        newPassword: "change-this-password",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain("新密码");
+  });
+
   test("queues verified student messages and exposes approved public chain with cohort identity", async () => {
     const adminToken = await loginAs("admin1");
     const book = await importSingleBook(adminToken, "接龙图书");

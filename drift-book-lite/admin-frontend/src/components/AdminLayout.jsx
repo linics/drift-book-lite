@@ -9,6 +9,7 @@ export function AdminLayout({ title, description, onLogout, children }) {
     { to: "/featured", label: "精选运营" },
     { to: "/sensitive-words", label: "敏感词库" },
     { to: "/assets", label: "站点素材" },
+    { to: "/settings", label: "账号设置" },
   ];
 
   return (
