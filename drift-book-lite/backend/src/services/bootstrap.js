@@ -8,10 +8,14 @@ async function ensureAdminUsers() {
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 
   for (const username of adminUsernames) {
-    await prisma.adminUser.upsert({
+    const existingAdmin = await prisma.adminUser.findUnique({
       where: { username },
-      update: { passwordHash },
-      create: { username, passwordHash },
+      select: { id: true },
+    });
+    if (existingAdmin) continue;
+
+    await prisma.adminUser.create({
+      data: { username, passwordHash },
     });
   }
 }

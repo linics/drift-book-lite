@@ -399,8 +399,9 @@ docker compose logs -f
 
 默认管理员账号：
 
-- 用户名：`admin`
-- 密码：你在 `.env` 中配置的 `ADMIN_PASSWORD`
+- 用户名：`admin1`、`admin2`、`admin3`
+- 初始密码：你在 `.env` 中配置的 `ADMIN_PASSWORD`
+- 登录后可在管理端“账号设置”中修改当前账号密码。后端启动时只会为缺失的管理员创建初始密码，不会覆盖已有管理员密码。
 
 ### 10. 放行防火墙端口
 
@@ -566,7 +567,7 @@ docker compose up --build -d
 | `ADMIN_FRONTEND_PORT` | 管理端对外端口 | `5175` |
 | `JWT_SECRET` | JWT 签名密钥 | `replace-with-random-secret` |
 | `ADMIN_USERNAMES` | 管理员用户名列表 | `admin1,admin2,admin3` |
-| `ADMIN_PASSWORD` | 管理员密码 | `replace-with-strong-password` |
+| `ADMIN_PASSWORD` | 缺失管理员账号的初始密码 | `replace-with-strong-password` |
 | `APP_BASE_URL` | 学生端页面地址 | `http://192.168.1.50:5174` |
 | `ADMIN_APP_BASE_URL` | 管理端页面地址 | `http://192.168.1.50:5175` |
 | `FRONTEND_API_BASE_URL` | 学生端构建时写入的 API 地址 | `http://192.168.1.50:8080/api` |
@@ -582,7 +583,7 @@ docker compose up --build -d
 | `PORT` | 后端监听端口 | `8080` |
 | `JWT_SECRET` | JWT 密钥 | `change-this-secret` |
 | `ADMIN_USERNAMES` | 管理员用户名列表 | `admin1,admin2,admin3` |
-| `ADMIN_PASSWORD` | 管理员密码 | `change-this-password` |
+| `ADMIN_PASSWORD` | 缺失管理员账号的初始密码 | `change-this-password` |
 | `APP_BASE_URL` | 学生端地址 | `http://localhost:5174` |
 | `ADMIN_APP_BASE_URL` | 管理端地址 | `http://localhost:5175` |
 | `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | `drift-book-lite/resources/default-site-assets` |
@@ -731,10 +732,9 @@ docker compose up --build -d
 
 ### 6. 想改管理员账号或密码
 
-修改根目录 `.env` 里的：
+想调整可用管理员账号列表时，修改根目录 `.env` 里的：
 
 - `ADMIN_USERNAMES`
-- `ADMIN_PASSWORD`
 
 然后重启后端：
 
@@ -742,7 +742,7 @@ docker compose up --build -d
 docker compose up --build -d backend
 ```
 
-后端启动时会自动更新管理员账号。
+后端启动时会创建缺失的管理员账号，但不会覆盖已有管理员密码。想修改当前管理员密码，请登录管理端并进入“账号设置”。`ADMIN_PASSWORD` 只作为新建管理员账号的初始密码使用。
 
 ## 本地开发
 

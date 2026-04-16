@@ -5,6 +5,7 @@ import { ReviewsPage } from "./pages/ReviewsPage.jsx";
 import { FeaturedReviewsPage } from "./pages/FeaturedReviewsPage.jsx";
 import { SensitiveWordsPage } from "./pages/SensitiveWordsPage.jsx";
 import { AssetsPage } from "./pages/AssetsPage.jsx";
+import { AccountSettingsPage } from "./pages/AccountSettingsPage.jsx";
 import { AdminGuard } from "./components/AdminLayout.jsx";
 
 function AdminRoutes() {
@@ -17,6 +18,7 @@ function AdminRoutes() {
           <Route path="/featured" element={<FeaturedReviewsPage token={token} onLogout={() => setToken("")} />} />
           <Route path="/sensitive-words" element={<SensitiveWordsPage token={token} onLogout={() => setToken("")} />} />
           <Route path="/assets" element={<AssetsPage token={token} onLogout={() => setToken("")} />} />
+          <Route path="/settings" element={<AccountSettingsPage token={token} onLogout={() => setToken("")} />} />
           <Route path="*" element={<Navigate to="/books" replace />} />
         </Routes>
       )}

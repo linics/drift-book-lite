@@ -14,12 +14,13 @@ async function requireAdmin(req, _res, next) {
     const payload = jwt.verify(token, jwtSecret);
     const adminUser = await prisma.adminUser.findUnique({
       where: { id: Number(payload.sub) },
-      select: { id: true, username: true },
+      select: { id: true, username: true, passwordVersion: true },
     });
     if (
       !adminUser ||
       adminUser.username !== payload.username ||
-      !adminUsernames.includes(adminUser.username)
+      !adminUsernames.includes(adminUser.username) ||
+      adminUser.passwordVersion !== payload.passwordVersion
     ) {
       return next(new HttpError(401, "登录已失效，请重新登录"));
     }

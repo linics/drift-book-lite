@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -28,9 +28,11 @@ import { BooksPage } from "./pages/BooksPage.jsx";
 import { ReviewsPage } from "./pages/ReviewsPage.jsx";
 import { FeaturedReviewsPage } from "./pages/FeaturedReviewsPage.jsx";
 import { SensitiveWordsPage } from "./pages/SensitiveWordsPage.jsx";
+import App from "./App.jsx";
 
 const TOKEN = "test-token";
 const NOOP = vi.fn();
+const ADMIN_TOKEN_KEY = "drift-book-admin-token";
 
 function wrap(ui, path = "/") {
   return render(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>);
@@ -84,6 +86,88 @@ describe("AdminLoginPage", () => {
       "/admin/login",
       expect.objectContaining({ username: "admin1", password: "secret" })
     );
+  });
+});
+
+// ─── Account settings route ─────────────────────────────────────────────────
+
+describe("Account settings", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    window.localStorage.setItem(ADMIN_TOKEN_KEY, TOKEN);
+    window.history.pushState({}, "", "/settings");
+    mockGet.mockReset();
+    mockPost.mockReset();
+    mockPatch.mockReset();
+    mockGet.mockImplementation((path) => {
+      if (path === "/admin/books") return Promise.resolve({ data: booksResponse });
+      if (path === "/admin/imports") return Promise.resolve({ data: { batches: [] } });
+      return Promise.reject(new Error(`Unexpected GET: ${path}`));
+    });
+  });
+
+  test("renders password change fields", async () => {
+    render(<App />);
+
+    expect(await screen.findByLabelText("当前密码")).toBeInTheDocument();
+    expect(screen.getByLabelText("新密码")).toBeInTheDocument();
+    expect(screen.getByLabelText("确认新密码")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "更新密码" })).toBeInTheDocument();
+  });
+
+  test("does not submit when password confirmation does not match", async () => {
+    render(<App />);
+
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("当前密码"), "change-this-password");
+    await user.type(screen.getByLabelText("新密码"), "new-admin-password");
+    await user.type(screen.getByLabelText("确认新密码"), "different-password");
+    await user.click(screen.getByRole("button", { name: "更新密码" }));
+
+    expect(mockPatch).not.toHaveBeenCalled();
+    expect(await screen.findByText("两次输入的新密码不一致。")).toBeInTheDocument();
+  });
+
+  test("clears the token and returns to login after password change", async () => {
+    mockPatch.mockResolvedValue({ data: { message: "密码已更新，请重新登录" } });
+    render(<App />);
+
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("当前密码"), "change-this-password");
+    await user.type(screen.getByLabelText("新密码"), "new-admin-password");
+    await user.type(screen.getByLabelText("确认新密码"), "new-admin-password");
+    await user.click(screen.getByRole("button", { name: "更新密码" }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalledWith(
+        "/admin/me/password",
+        {
+          currentPassword: "change-this-password",
+          newPassword: "new-admin-password",
+        },
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: `Bearer ${TOKEN}` }),
+        })
+      );
+    });
+    expect(window.localStorage.getItem(ADMIN_TOKEN_KEY)).toBeNull();
+    expect(await screen.findByText("密码已更新，请使用新密码登录。")).toBeInTheDocument();
+  });
+
+  test("shows api errors when password change fails", async () => {
+    mockPatch.mockRejectedValue({
+      response: { data: { message: "当前密码错误" } },
+    });
+    render(<App />);
+
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("当前密码"), "wrong-password");
+    await user.type(screen.getByLabelText("新密码"), "new-admin-password");
+    await user.type(screen.getByLabelText("确认新密码"), "new-admin-password");
+    await user.click(screen.getByRole("button", { name: "更新密码" }));
+
+    expect(await screen.findByText("当前密码错误")).toBeInTheDocument();
   });
 });
 

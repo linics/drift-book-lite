@@ -1,4 +1,5 @@
 const express = require("express");
+const bcrypt = require("bcryptjs");
 const { z } = require("zod");
 const { prisma } = require("../lib/prisma");
 const { adminUsernames, defaultSiteAssetsDir } = require("../lib/env");
@@ -38,6 +39,11 @@ const router = express.Router();
 const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
 });
 
 const updateBookSchema = z.object({
@@ -109,6 +115,37 @@ router.post("/login", async (req, res) => {
 });
 
 router.use(requireAdmin);
+
+router.patch("/me/password", async (req, res) => {
+  const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+  const adminUser = await prisma.adminUser.findUnique({
+    where: { id: Number(req.adminUser.sub) },
+  });
+  if (!adminUser || !adminUsernames.includes(adminUser.username)) {
+    throw new HttpError(401, "登录已失效，请重新登录");
+  }
+
+  const currentPasswordValid = await verifyPassword(currentPassword, adminUser.passwordHash);
+  if (!currentPasswordValid) {
+    throw new HttpError(401, "当前密码错误");
+  }
+
+  const newPasswordMatchesCurrent = await verifyPassword(newPassword, adminUser.passwordHash);
+  if (newPasswordMatchesCurrent) {
+    throw new HttpError(400, "新密码不能与当前密码相同");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.adminUser.update({
+    where: { id: adminUser.id },
+    data: {
+      passwordHash,
+      passwordVersion: { increment: 1 },
+    },
+  });
+
+  res.json({ message: "密码已更新，请重新登录" });
+});
 
 router.get("/books", async (req, res) => {
   const result = await listAdminBooks({
