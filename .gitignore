@@ -17,6 +17,8 @@ drift-book-lite/backend/dev.db
 drift-book-lite/backend/.test-uploads/
 drift-book-lite/backend/prisma/dev.db
 drift-book-lite/backend/prisma/test.db
+drift-book-lite/backend/prisma/test.db-wal
+drift-book-lite/backend/prisma/test.db-shm
 drift-book-lite/backend/node_modules/
 drift-book-lite/frontend/node_modules/
 drift-book-lite/frontend/dist/
