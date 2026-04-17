@@ -75,10 +75,14 @@
 │   └── resources/
 │       ├── default-site-assets/      # 默认首页图片（Logo、轮播图）
 │       └── default-sensitive-words/  # 默认敏感词快照
+├── scripts/
+│   ├── windows/          # 无 Docker 本地运行工具
+│   └── windows-docker/   # Windows Docker 部署工具
 ├── docker-compose.yml    # 推荐部署方式
 ├── .env.example          # 根目录部署环境变量模板
-├── 图书信息.csv
-└── 图书馆7楼流通室数据.xlsx
+└── data/                 # 参考数据文件（gitignored，不随代码提交）
+    ├── 图书信息.csv
+    └── 图书馆7楼流通室数据.xlsx
 ```
 
 ## 功能概览
@@ -115,7 +119,7 @@
 
 如果学校网络导致 Docker 拉镜像困难，也可以改走 Windows 无 Docker 部署，见：
 
-- [WINDOWS-NO-DOCKER-DEPLOY.md](/Users/linics/Documents/githubfiles/library-management-system/WINDOWS-NO-DOCKER-DEPLOY.md)
+- [WINDOWS-NO-DOCKER-DEPLOY.md](scripts/windows/WINDOWS-NO-DOCKER-DEPLOY.md)
 
 ### 1. 部署电脑最低要求
 
@@ -603,10 +607,10 @@ docker compose up --build -d
 - `create_only`：只新增，不覆盖已有图书
 - `upsert`：已存在则更新
 
-仓库自带样例文件：
+仓库自带样例文件（位于 `data/`，不随代码提交）：
 
-- [图书信息.csv](/Users/linics/Documents/githubfiles/library-management-system/图书信息.csv)
-- [图书馆7楼流通室数据.xlsx](/Users/linics/Documents/githubfiles/library-management-system/图书馆7楼流通室数据.xlsx)
+- `data/图书信息.csv`
+- `data/图书馆7楼流通室数据.xlsx`
 
 ### 站点素材
 

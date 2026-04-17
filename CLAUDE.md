@@ -91,36 +91,42 @@ npx prisma studio                               # Launch Prisma Studio (GUI)
 drift-book-lite/
 ├── backend/
 │   ├── src/
-│   │   ├── app.js                   # Express app setup
-│   │   ├── server.js                # Server entry point
+│   │   ├── app.js                        # Express app setup
+│   │   ├── server.js                     # Server entry point
 │   │   ├── lib/
-│   │   │   ├── prisma.js            # Prisma client + WAL pragmas
-│   │   │   └── env.js               # Environment variable loading
+│   │   │   ├── prisma.js                 # Prisma client + WAL pragmas
+│   │   │   └── env.js                    # Environment variable loading
 │   │   ├── services/
-│   │   │   ├── library.js           # Book/review logic + caching
-│   │   │   ├── bootstrap.js         # Admin user initialization
-│   │   │   └── sensitive-words.js   # Sensitive word checking
+│   │   │   ├── library.js                # Core book/review/sensitive-word logic + caching
+│   │   │   ├── assets.js                 # Site assets (carousel, logo)
+│   │   │   ├── bootstrap.js              # Admin user initialization
+│   │   │   ├── defaultSensitiveWords.js  # Default word list import from resources/
+│   │   │   └── studentRoster.js          # Student data helpers
 │   │   ├── routes/
-│   │   │   ├── public.js            # Public API endpoints
-│   │   │   └── admin.js             # Admin-protected endpoints
+│   │   │   ├── public.js                 # Public API endpoints
+│   │   │   └── admin.js                  # Admin-protected endpoints
 │   │   ├── middleware/
-│   │   │   └── auth.js              # JWT authentication
+│   │   │   ├── adminAuth.js              # JWT authentication guard
+│   │   │   └── uploads.js                # Multer file upload handlers
 │   │   └── utils/
-│   │       └── httpError.js         # Custom error class
+│   │       ├── auth.js                   # JWT signing + password verification
+│   │       ├── httpError.js              # Custom error class
+│   │       └── paths.js                  # Path utilities
 │   ├── prisma/
-│   │   ├── schema.prisma            # Database schema
-│   │   └── dev.db                   # SQLite database (dev)
+│   │   ├── schema.prisma                 # Database schema
+│   │   └── dev.db                        # SQLite database (dev)
 │   └── package.json
-├── frontend/                         # Student interface
+├── frontend/                              # Student interface
 │   ├── src/
-│   │   ├── components/              # React components
-│   │   ├── pages/                   # Page-level components
-│   │   ├── stores/                  # Zustand state
+│   │   ├── components/                   # React components
+│   │   ├── pages/                        # Page-level components
+│   │   ├── hooks/                        # Custom React hooks
+│   │   ├── lib/                          # API client + helpers
 │   │   ├── App.jsx
-│   │   └── main.jsx                 # Entry point
+│   │   └── main.jsx                      # Entry point
 │   ├── vite.config.js
 │   └── package.json
-└── admin-frontend/                   # Admin interface
+└── admin-frontend/                        # Admin interface
     └── [same structure as frontend]
 ```
 
@@ -181,6 +187,9 @@ When writing admin endpoints that modify sensitive words or review data:
    await prisma.sensitiveWord.create(...);
    invalidateSensitiveWordsCache();  // Clear TTL cache
    ```
+
+### Data & Reference Files
+Project-level data files (CSV/XLSX catalogs, staff rosters, requirement docs) live in `data/` at the repo root. This directory is gitignored and not committed. Application-level resources (default site assets, sensitive word lists) live in `drift-book-lite/resources/`.
 
 ### API Response Format
 All endpoints return JSON with consistent error handling:

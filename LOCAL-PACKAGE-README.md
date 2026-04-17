@@ -7,7 +7,6 @@
 - 当前项目源码和部署配置。
 - `package-data/backend-data/dev.db`：本地 SQLite 数据库快照。
 - `drift-book-lite/uploads`：本地上传素材快照。
-- `2025学年学生信息.xls`：学生名单文件，用于后端启动时导入或校验学生信息。
 - `scripts/windows-docker`：Windows Docker 首次部署、日常启动、停止、状态查看、备份工具。
 - `scripts/windows`：无 Docker 本地运行工具和说明。
 
