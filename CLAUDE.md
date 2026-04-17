@@ -189,7 +189,15 @@ When writing admin endpoints that modify sensitive words or review data:
    ```
 
 ### Data & Reference Files
-Project-level data files (CSV/XLSX catalogs, staff rosters, requirement docs) live in `data/` at the repo root. This directory is gitignored and not committed. Application-level resources (default site assets, sensitive word lists) live in `drift-book-lite/resources/`.
+Project-level reference files (CSV/XLSX book catalogs, requirement docs) live in `data/` at the repo root. This directory is gitignored and not committed — files there are local-only and will not be present after a clean clone.
+
+Application-level resources (default site assets, sensitive word lists) live in `drift-book-lite/resources/`.
+
+**Student roster** has deployment-specific paths and must NOT be placed in `data/`:
+- Docker: `./2025学年学生信息.xls` at repo root (mounted by `docker-compose.yml`)
+- Windows no-Docker: `package-data\student-roster.xls` (falls back to root `2025学年学生信息.xls`)
+
+Placing the roster under `data/` will cause `loadStudentRosterRows()` to return an empty set and student identity validation to fail.
 
 ### API Response Format
 All endpoints return JSON with consistent error handling:
