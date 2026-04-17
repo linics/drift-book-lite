@@ -6,6 +6,7 @@
 
 - 当前项目源码和部署配置。
 - `package-data/backend-data/dev.db`：本地 SQLite 数据库快照。
+- `package-data/student-roster.xls`：学生名单文件，后端导入学生身份时使用。打包前请先备份并重命名至此路径；缺失时后端仍可启动，但学生身份校验将失败。
 - `drift-book-lite/uploads`：本地上传素材快照。
 - `scripts/windows-docker`：Windows Docker 首次部署、日常启动、停止、状态查看、备份工具。
 - `scripts/windows`：无 Docker 本地运行工具和说明。
