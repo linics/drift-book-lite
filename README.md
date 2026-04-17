@@ -75,7 +75,8 @@
 │   ├── backend/          # Express + Prisma + SQLite
 │   └── resources/
 │       ├── default-site-assets/      # 默认首页图片（Logo、轮播图）
-│       └── default-sensitive-words/  # 默认敏感词快照
+│       ├── default-sensitive-words/  # 默认敏感词快照
+│       └── default-teacher-roster/   # R-009 清理后的教师名册
 ├── scripts/
 │   ├── windows/          # 无 Docker 本地运行工具
 │   └── windows-docker/   # Windows Docker 部署工具
@@ -593,6 +594,8 @@ docker compose up --build -d
 | `ADMIN_APP_BASE_URL` | 管理端地址 | `http://localhost:5175` |
 | `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | 留空自动检测；需覆盖时使用**绝对路径** |
 | `DEFAULT_SENSITIVE_WORDS_DIR` | 默认敏感词目录路径 | 留空自动检测；需覆盖时使用**绝对路径** |
+| `STUDENT_ROSTER_PATH` | 学生名册路径 | 默认查找项目根目录 `2025学年学生信息.xls` |
+| `TEACHER_ROSTER_PATH` | 教师名册路径 | 默认使用 `drift-book-lite/resources/default-teacher-roster/2025-teachers.txt` |
 
 ## 图书导入与素材
 

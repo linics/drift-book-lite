@@ -14,11 +14,13 @@ services:
       DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets
       DEFAULT_SENSITIVE_WORDS_DIR: /app/resources/default-sensitive-words
       STUDENT_ROSTER_PATH: /app/resources/student-roster/2025学年学生信息.xls
+      TEACHER_ROSTER_PATH: /app/resources/default-teacher-roster/2025-teachers.txt
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:
       - ./drift-book-lite/resources/default-site-assets:/app/resources/default-site-assets:ro
       - ./drift-book-lite/resources/default-sensitive-words:/app/resources/default-sensitive-words:ro
+      - ./drift-book-lite/resources/default-teacher-roster:/app/resources/default-teacher-roster:ro
       - ./2025学年学生信息.xls:/app/resources/student-roster/2025学年学生信息.xls:ro
       - backend_data:/data
       - backend_uploads:/app/uploads
