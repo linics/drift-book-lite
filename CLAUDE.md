@@ -71,10 +71,10 @@ Create `.env` files in respective app directories:
 
 **Backend** (`drift-book-lite/backend/.env`):
 ```
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="file:./dev.db"
 JWT_SECRET="your-secret-key"
 ALLOWED_ORIGINS="http://localhost:5173,http://localhost:5174"
-UPLOAD_DIR="./uploads"
+# UPLOADS_DIR defaults to drift-book-lite/uploads; omit or use absolute path
 ```
 
 ### Database Migrations
@@ -91,36 +91,42 @@ npx prisma studio                               # Launch Prisma Studio (GUI)
 drift-book-lite/
 ├── backend/
 │   ├── src/
-│   │   ├── app.js                   # Express app setup
-│   │   ├── server.js                # Server entry point
+│   │   ├── app.js                        # Express app setup
+│   │   ├── server.js                     # Server entry point
 │   │   ├── lib/
-│   │   │   ├── prisma.js            # Prisma client + WAL pragmas
-│   │   │   └── env.js               # Environment variable loading
+│   │   │   ├── prisma.js                 # Prisma client + WAL pragmas
+│   │   │   └── env.js                    # Environment variable loading
 │   │   ├── services/
-│   │   │   ├── library.js           # Book/review logic + caching
-│   │   │   ├── bootstrap.js         # Admin user initialization
-│   │   │   └── sensitive-words.js   # Sensitive word checking
+│   │   │   ├── library.js                # Core book/review/sensitive-word logic + caching
+│   │   │   ├── assets.js                 # Site assets (carousel, logo)
+│   │   │   ├── bootstrap.js              # Admin user initialization
+│   │   │   ├── defaultSensitiveWords.js  # Default word list import from resources/
+│   │   │   └── studentRoster.js          # Student data helpers
 │   │   ├── routes/
-│   │   │   ├── public.js            # Public API endpoints
-│   │   │   └── admin.js             # Admin-protected endpoints
+│   │   │   ├── public.js                 # Public API endpoints
+│   │   │   └── admin.js                  # Admin-protected endpoints
 │   │   ├── middleware/
-│   │   │   └── auth.js              # JWT authentication
+│   │   │   ├── adminAuth.js              # JWT authentication guard
+│   │   │   └── uploads.js                # Multer file upload handlers
 │   │   └── utils/
-│   │       └── httpError.js         # Custom error class
+│   │       ├── auth.js                   # JWT signing + password verification
+│   │       ├── httpError.js              # Custom error class
+│   │       └── paths.js                  # Path utilities
 │   ├── prisma/
-│   │   ├── schema.prisma            # Database schema
-│   │   └── dev.db                   # SQLite database (dev)
+│   │   ├── schema.prisma                 # Database schema
+│   │   └── dev.db                        # SQLite database (dev)
 │   └── package.json
-├── frontend/                         # Student interface
+├── frontend/                              # Student interface
 │   ├── src/
-│   │   ├── components/              # React components
-│   │   ├── pages/                   # Page-level components
-│   │   ├── stores/                  # Zustand state
+│   │   ├── components/                   # React components
+│   │   ├── pages/                        # Page-level components
+│   │   ├── hooks/                        # Custom React hooks
+│   │   ├── lib/                          # API client + helpers
 │   │   ├── App.jsx
-│   │   └── main.jsx                 # Entry point
+│   │   └── main.jsx                      # Entry point
 │   ├── vite.config.js
 │   └── package.json
-└── admin-frontend/                   # Admin interface
+└── admin-frontend/                        # Admin interface
     └── [same structure as frontend]
 ```
 
@@ -166,7 +172,7 @@ Set via `.env` or container env vars:
 - `DATABASE_URL`: Prisma connection string
 - `JWT_SECRET`: Secure random key
 - `ALLOWED_ORIGINS`: CORS whitelist
-- `UPLOAD_DIR`: File upload directory path
+- `UPLOADS_DIR`: File upload directory path
 
 ## Key Implementation Details
 
@@ -182,13 +188,24 @@ When writing admin endpoints that modify sensitive words or review data:
    invalidateSensitiveWordsCache();  // Clear TTL cache
    ```
 
+### Data & Reference Files
+Project-level reference files (CSV/XLSX book catalogs, requirement docs) live in `data/` at the repo root. This directory is gitignored and not committed — files there are local-only and will not be present after a clean clone.
+
+Application-level resources (default site assets, sensitive word lists) live in `drift-book-lite/resources/`.
+
+**Student roster** has deployment-specific paths and must NOT be placed in `data/`:
+- Docker: `./2025学年学生信息.xls` at repo root (mounted by `docker-compose.yml`)
+- Windows no-Docker: `package-data\student-roster.xls` (falls back to root `2025学年学生信息.xls`)
+
+Placing the roster under `data/` will cause `loadStudentRosterRows()` to return an empty set and student identity validation to fail.
+
 ### API Response Format
 All endpoints return JSON with consistent error handling:
 - Success: `{ data: {...} }` or direct data for simple responses
 - Error: `{ message: "User-friendly error message" }` (HTTP status codes: 400 for validation, 409 for conflicts, 500 for server errors)
 
 ### File Uploads
-- Stored in `drift-book-lite/backend/uploads/` (or `UPLOAD_DIR` env var)
+- Stored in `drift-book-lite/uploads/` (default; override with absolute `UPLOADS_DIR` env var)
 - Served via `GET /uploads/:filename`
 - Multer middleware validates and limits file size
 

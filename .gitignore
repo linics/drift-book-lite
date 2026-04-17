@@ -27,6 +27,7 @@ drift-book-lite/admin-frontend/dist/
 drift-book-lite/uploads/
 
 package-data/
+data/
 materials/
 backups/
 

@@ -11,10 +11,11 @@
 
 1. 安装 Docker Desktop 或 Docker Engine + Docker Compose
 2. 把项目拷到部署电脑
-3. 查出这台电脑的局域网 IP，例如 `192.168.1.50`
-4. 修改根目录 `.env`，把前端 API 地址从 `localhost` 改成这台机器的局域网 IP
-5. 执行 `docker compose up --build -d`
-6. 在局域网其他设备访问：
+3. 将学生名单文件（`2025学年学生信息.xls`）放到**项目根目录**（与 `docker-compose.yml` 同级）；缺失时后端仍可启动，但学生身份校验会失败
+4. 查出这台电脑的局域网 IP，例如 `192.168.1.50`
+5. 修改根目录 `.env`，把前端 API 地址从 `localhost` 改成这台机器的局域网 IP
+6. 执行 `docker compose up --build -d`
+7. 在局域网其他设备访问：
    - 学生端：`http://192.168.1.50:5174`
    - 管理端：`http://192.168.1.50:5175`
 
@@ -75,10 +76,14 @@
 │   └── resources/
 │       ├── default-site-assets/      # 默认首页图片（Logo、轮播图）
 │       └── default-sensitive-words/  # 默认敏感词快照
+├── scripts/
+│   ├── windows/          # 无 Docker 本地运行工具
+│   └── windows-docker/   # Windows Docker 部署工具
 ├── docker-compose.yml    # 推荐部署方式
 ├── .env.example          # 根目录部署环境变量模板
-├── 图书信息.csv
-└── 图书馆7楼流通室数据.xlsx
+└── data/                 # 参考数据文件（gitignored，不随代码提交）
+    ├── 图书信息.csv
+    └── 图书馆7楼流通室数据.xlsx
 ```
 
 ## 功能概览
@@ -115,7 +120,7 @@
 
 如果学校网络导致 Docker 拉镜像困难，也可以改走 Windows 无 Docker 部署，见：
 
-- [WINDOWS-NO-DOCKER-DEPLOY.md](/Users/linics/Documents/githubfiles/library-management-system/WINDOWS-NO-DOCKER-DEPLOY.md)
+- [WINDOWS-NO-DOCKER-DEPLOY.md](scripts/windows/WINDOWS-NO-DOCKER-DEPLOY.md)
 
 ### 1. 部署电脑最低要求
 
@@ -586,8 +591,8 @@ docker compose up --build -d
 | `ADMIN_PASSWORD` | 缺失管理员账号的初始密码 | `change-this-password` |
 | `APP_BASE_URL` | 学生端地址 | `http://localhost:5174` |
 | `ADMIN_APP_BASE_URL` | 管理端地址 | `http://localhost:5175` |
-| `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | `drift-book-lite/resources/default-site-assets` |
-| `DEFAULT_SENSITIVE_WORDS_DIR` | 默认敏感词目录路径 | `drift-book-lite/resources/default-sensitive-words` |
+| `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | 留空自动检测；需覆盖时使用**绝对路径** |
+| `DEFAULT_SENSITIVE_WORDS_DIR` | 默认敏感词目录路径 | 留空自动检测；需覆盖时使用**绝对路径** |
 
 ## 图书导入与素材
 
@@ -603,10 +608,10 @@ docker compose up --build -d
 - `create_only`：只新增，不覆盖已有图书
 - `upsert`：已存在则更新
 
-仓库自带样例文件：
+样例文件随本地工作目录附带，**不随代码提交**（`data/` 已被 gitignore）。全新克隆仓库后不包含这些文件；如需样例数据，请联系项目负责人获取或使用本地打包包中的副本：
 
-- [图书信息.csv](/Users/linics/Documents/githubfiles/library-management-system/图书信息.csv)
-- [图书馆7楼流通室数据.xlsx](/Users/linics/Documents/githubfiles/library-management-system/图书馆7楼流通室数据.xlsx)
+- `data/图书信息.csv`（本地 `data/` 目录，仅本地存在）
+- `data/图书馆7楼流通室数据.xlsx`（本地 `data/` 目录，仅本地存在）
 
 ### 站点素材
 
@@ -628,7 +633,7 @@ docker compose up --build -d
 - 内置快照随项目代码一起部署，不依赖目标机器在运行时访问 GitHub
 - 默认快照不包含政治类型、反动词库、民生词库、新思想启蒙、GFW 补充、零时-Tencent、网易前端过滤敏感词库等高误判或大杂包类别
 - 如需替换默认目录，可在后端设置 `DEFAULT_SENSITIVE_WORDS_DIR`
-- 上游来源与快照说明见 [SOURCES.md](/Users/linics/Documents/githubfiles/library-management-system/drift-book-lite/resources/default-sensitive-words/SOURCES.md)
+- 上游来源与快照说明见 [SOURCES.md](drift-book-lite/resources/default-sensitive-words/SOURCES.md)
 
 ## 主要接口
 
@@ -816,5 +821,5 @@ npm run build
 
 ## 子模块文档
 
-- [学生端说明](/Users/linics/Documents/githubfiles/library-management-system/drift-book-lite/frontend/README.md)
-- [管理端说明](/Users/linics/Documents/githubfiles/library-management-system/drift-book-lite/admin-frontend/README.md)
+- [学生端说明](drift-book-lite/frontend/README.md)
+- [管理端说明](drift-book-lite/admin-frontend/README.md)
