@@ -71,7 +71,7 @@ Create `.env` files in respective app directories:
 
 **Backend** (`drift-book-lite/backend/.env`):
 ```
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="file:./dev.db"
 JWT_SECRET="your-secret-key"
 ALLOWED_ORIGINS="http://localhost:5173,http://localhost:5174"
 UPLOADS_DIR="./uploads"
