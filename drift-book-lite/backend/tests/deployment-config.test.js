@@ -20,6 +20,7 @@ describe("deployment configuration", () => {
 
     expect(backendEnv).toContain('APP_BASE_URL="http://localhost:5174"');
     expect(backendEnv).toContain('ADMIN_APP_BASE_URL="http://localhost:5175"');
+    expect(backendEnv).toContain('TEACHER_ROSTER_PATH=""');
     expect(backendEnv).not.toContain("ALLOWED_ORIGINS=");
   });
 
@@ -42,6 +43,7 @@ describe("deployment configuration", () => {
     expect(compose).not.toContain("ALLOWED_ORIGINS:");
     expect(compose).toContain("DEFAULT_SITE_ASSETS_DIR: /app/resources/default-site-assets");
     expect(compose).toContain("DEFAULT_SENSITIVE_WORDS_DIR: /app/resources/default-sensitive-words");
+    expect(compose).toContain("TEACHER_ROSTER_PATH: /app/resources/default-teacher-roster/2025-teachers.txt");
     expect(compose).toContain(
       "STUDENT_ROSTER_PATH: /app/resources/student-roster/2025学年学生信息.xls"
     );
@@ -50,6 +52,9 @@ describe("deployment configuration", () => {
     );
     expect(compose).toContain(
       "./drift-book-lite/resources/default-sensitive-words:/app/resources/default-sensitive-words:ro"
+    );
+    expect(compose).toContain(
+      "./drift-book-lite/resources/default-teacher-roster:/app/resources/default-teacher-roster:ro"
     );
     expect(compose).toContain(
       "./2025学年学生信息.xls:/app/resources/student-roster/2025学年学生信息.xls:ro"

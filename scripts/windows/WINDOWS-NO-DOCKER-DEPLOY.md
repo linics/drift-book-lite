@@ -101,6 +101,7 @@ APP_BASE_URL="http://10.11.23.45:5174"
 ADMIN_APP_BASE_URL="http://10.11.23.45:5175"
 DEFAULT_SITE_ASSETS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-site-assets"
 DEFAULT_SENSITIVE_WORDS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-sensitive-words"
+TEACHER_ROSTER_PATH="D:/your-path/library-management-system/drift-book-lite/resources/default-teacher-roster/2025-teachers.txt"
 ```
 
 说明：
@@ -113,6 +114,7 @@ DEFAULT_SENSITIVE_WORDS_DIR="D:/your-path/library-management-system/drift-book-l
 - `ADMIN_APP_BASE_URL`：管理端访问地址，后端默认会把它加入允许的 CORS 来源
 - `DEFAULT_SITE_ASSETS_DIR`：指向 `drift-book-lite/resources/default-site-assets`
 - `DEFAULT_SENSITIVE_WORDS_DIR`：指向 `drift-book-lite/resources/default-sensitive-words`
+- `TEACHER_ROSTER_PATH`：指向 `drift-book-lite/resources/default-teacher-roster/2025-teachers.txt`
 
 补充说明：
 

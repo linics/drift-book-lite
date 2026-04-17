@@ -1,262 +1,241 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file gives Claude Code guidance for working in this repository. Treat `AGENTS.md`, `REQUIREMENTS.md`, and the current source as the source of truth if they disagree with older notes.
 
 ## Project Overview
 
-**drift-book-lite** is a school library management system consisting of three Node.js applications:
-- **Backend** (Express + Prisma + SQLite): REST API server
-- **Frontend** (React 19 + Vite + Tailwind): Student-facing web interface
-- **Admin Frontend** (React 19 + Vite + Tailwind): Administrator management console
+`drift-book-lite` is a school library activity system with three Node.js apps:
 
-The codebase uses a monorepo structure under `drift-book-lite/` with independent `package.json` files per application.
+- Backend: Express + Prisma + SQLite API server
+- Student frontend: React 19 + Vite + Tailwind
+- Admin frontend: React 19 + Vite + Tailwind
 
-## Architecture & Key Decisions
+The application code lives under `drift-book-lite/`. Repo-root files mostly cover deployment, requirements, local data, and agent instructions.
 
-### Database Design
-- **SQLite with WAL mode** for better concurrency (R-008 optimization)
-- **Prisma ORM** for type-safe database access
-- Database file: `drift-book-lite/backend/prisma/dev.db` (development)
-- Core entities: `AdminUser`, `Book`, `BookReview`, `StudentRoster`, `ImportBatch`, `SiteAsset`, `SensitiveWord`
+## Current Ports And URLs
 
-### Backend Performance (R-008)
-The backend includes the following optimizations to support ~100 concurrent users:
-1. **SQLite WAL mode** (`PRAGMA journal_mode=WAL`) for parallel reads with writes
-2. **gzip compression** via Express middleware for JSON responses (60-80% reduction)
-3. **Module-level TTL caching**: sensitive words (60s), homepage data (30s)
-4. **HTTP Cache-Control headers** on static/frequently-accessed endpoints (1hr for assets, 30-60s for data)
+Use the current environment templates, not older 3001/5173/5174 assumptions:
 
-Sensitive word cache invalidation triggered after CRUD operations; homepage cache invalidated after review status/featured flag changes.
+| Service | Default port | Local URL |
+| --- | ---: | --- |
+| Backend API | `8080` | `http://localhost:8080/api` |
+| Student frontend | `5174` | `http://localhost:5174` |
+| Admin frontend | `5175` | `http://localhost:5175` |
 
-### Authentication & Authorization
-- JWT-based admin authentication via `adminRouter` (`src/routes/admin.js`)
-- Public endpoints in `publicRouter` (`src/routes/public.js`)
-- Middleware checks `req.adminUser` populated from JWT
+For LAN deployment, browser-facing API URLs must use the deployment machine IP, for example `http://192.168.1.50:8080/api`. Do not leave frontend API URLs as `localhost` when other devices need access.
 
-## Development Workflow
+## Repository Workflow
 
-### Initial Setup
+- Check `git status --short --branch` before starting.
+- Use a separate branch for each requirement or coherent task. Requirement branches prefer names like `r009`; docs-only branches can use `docs/...`.
+- Do not overwrite or revert user changes unless explicitly asked.
+- Read existing implementation and tests before changing code.
+- Requirement work must update `REQUIREMENTS.md`: status, notes, and change log.
+- Before completion, run `git diff --check` and the relevant test commands.
+- After merging to `main`, rerun relevant tests on `main` before pushing.
+
+## Setup
+
+Install dependencies independently in each app:
+
 ```bash
 cd drift-book-lite/backend && npm install
-cd drift-book-lite/frontend && npm install
-cd drift-book-lite/admin-frontend && npm install
+cd ../frontend && npm install
+cd ../admin-frontend && npm install
 ```
 
-### Running Applications
+For deterministic installs in deployment scripts, use `npm ci`.
 
-**Backend** (runs on port 3001):
+## Environment Files
+
+Environment templates:
+
+- Root deployment template: `.env.example`
+- Backend local template: `drift-book-lite/backend/.env.example`
+- Student frontend template: `drift-book-lite/frontend/.env.example`
+- Admin frontend template: `drift-book-lite/admin-frontend/.env.example`
+
+Important backend variables:
+
+| Variable | Purpose | Default or typical value |
+| --- | --- | --- |
+| `DATABASE_URL` | SQLite database URL | `file:./dev.db` |
+| `PORT` | Backend listener port | `8080` |
+| `JWT_SECRET` | Admin JWT signing key | change in real deployments |
+| `ADMIN_USERNAMES` | Comma-separated admin users | `admin1,admin2,admin3` |
+| `ADMIN_PASSWORD` | Initial password for missing admins | change in real deployments |
+| `APP_BASE_URL` | Student frontend origin for CORS | `http://localhost:5174` |
+| `ADMIN_APP_BASE_URL` | Admin frontend origin for CORS | `http://localhost:5175` |
+| `DEFAULT_SITE_ASSETS_DIR` | Default logo/carousel source directory | `drift-book-lite/resources/default-site-assets` |
+| `DEFAULT_SENSITIVE_WORDS_DIR` | Default sensitive word source directory | `drift-book-lite/resources/default-sensitive-words` |
+| `STUDENT_ROSTER_PATH` | Deployment-specific student roster | repo-root `2025学年学生信息.xls` fallback |
+| `TEACHER_ROSTER_PATH` | Cleaned teacher roster source | `drift-book-lite/resources/default-teacher-roster/2025-teachers.txt` |
+| `UPLOADS_DIR` | Runtime upload copies | `drift-book-lite/uploads` |
+
+Frontend variables:
+
+- Both frontends use `VITE_API_BASE_URL`.
+- In local Vite dev with a proxy, `/api` is valid.
+- In LAN/static builds, use the full backend URL with the deployment host IP.
+
+Never use `change-this-secret` or `change-this-password` in production or externally accessible environments.
+
+## Running Locally
+
+Backend:
+
 ```bash
 cd drift-book-lite/backend
-npm run dev                    # Run with nodemon
-npm test                       # Run full test suite
-npm test -- --testNamePattern="specific test" # Run single test
+npm run dev
 ```
 
-**Frontend** (runs on port 5173):
+Student frontend:
+
 ```bash
 cd drift-book-lite/frontend
-npm run dev                    # Vite dev server
-npm run build                  # Production build
+npm run dev
 ```
 
-**Admin Frontend** (runs on port 5174):
+Admin frontend:
+
 ```bash
 cd drift-book-lite/admin-frontend
 npm run dev
-npm run build
 ```
 
-### Environment Configuration
-Create `.env` files in respective app directories:
+Windows no-Docker helpers live in `scripts/windows/`. The generated backend `.env` should include the default assets, sensitive words, teacher roster, student roster, and uploads paths.
 
-**Backend** (`drift-book-lite/backend/.env`):
-```
-DATABASE_URL="file:./dev.db"
-JWT_SECRET="your-secret-key"
-ALLOWED_ORIGINS="http://localhost:5173,http://localhost:5174"
-# UPLOADS_DIR defaults to drift-book-lite/uploads; omit or use absolute path
-```
+## Database
 
-### Database Migrations
+- Prisma schema: `drift-book-lite/backend/prisma/schema.prisma`
+- Development SQLite database: `drift-book-lite/backend/prisma/dev.db`
+- Tests recreate `drift-book-lite/backend/prisma/test.db`
+- There is no committed Prisma migration directory; current workflows use `npx prisma db push`.
+
+Useful backend commands:
+
 ```bash
 cd drift-book-lite/backend
-npx prisma migrate dev --name "migration name"  # Create and apply migration
-npx prisma db push                              # Push schema to database
-npx prisma studio                               # Launch Prisma Studio (GUI)
+npm run prisma:generate
+npm run prisma:push
+npm test
 ```
 
-## File Organization
+SQLite WAL mode is enabled in `src/lib/prisma.js`; `*.db-wal` and `*.db-shm` files are expected runtime artifacts and must not be committed.
 
-```
-drift-book-lite/
-├── backend/
-│   ├── src/
-│   │   ├── app.js                        # Express app setup
-│   │   ├── server.js                     # Server entry point
-│   │   ├── lib/
-│   │   │   ├── prisma.js                 # Prisma client + WAL pragmas
-│   │   │   └── env.js                    # Environment variable loading
-│   │   ├── services/
-│   │   │   ├── library.js                # Core book/review/sensitive-word logic + caching
-│   │   │   ├── assets.js                 # Site assets (carousel, logo)
-│   │   │   ├── bootstrap.js              # Admin user initialization
-│   │   │   ├── defaultSensitiveWords.js  # Default word list import from resources/
-│   │   │   └── studentRoster.js          # Student data helpers
-│   │   ├── routes/
-│   │   │   ├── public.js                 # Public API endpoints
-│   │   │   └── admin.js                  # Admin-protected endpoints
-│   │   ├── middleware/
-│   │   │   ├── adminAuth.js              # JWT authentication guard
-│   │   │   └── uploads.js                # Multer file upload handlers
-│   │   └── utils/
-│   │       ├── auth.js                   # JWT signing + password verification
-│   │       ├── httpError.js              # Custom error class
-│   │       └── paths.js                  # Path utilities
-│   ├── prisma/
-│   │   ├── schema.prisma                 # Database schema
-│   │   └── dev.db                        # SQLite database (dev)
-│   └── package.json
-├── frontend/                              # Student interface
-│   ├── src/
-│   │   ├── components/                   # React components
-│   │   ├── pages/                        # Page-level components
-│   │   ├── hooks/                        # Custom React hooks
-│   │   ├── lib/                          # API client + helpers
-│   │   ├── App.jsx
-│   │   └── main.jsx                      # Entry point
-│   ├── vite.config.js
-│   └── package.json
-└── admin-frontend/                        # Admin interface
-    └── [same structure as frontend]
-```
+## Testing
 
-## Testing & Quality
+Run the matching tests for the area changed:
 
-### Backend Tests
-Tests live in `drift-book-lite/backend/test/` and use Node's built-in test runner.
-
-Run tests:
 ```bash
-npm test                       # Run all tests
-npm test -- --grep "pattern"  # Filter by test name
+cd drift-book-lite/backend && npm test
+cd drift-book-lite/frontend && npm test
+cd drift-book-lite/admin-frontend && npm test
 ```
 
-Key test areas:
-- Sensitive word detection and caching invalidation
-- Admin CRUD operations
-- File upload/import logic
-- Cache TTL behavior
+The backend test runner is `node tests/run-tests.js`; it resets `prisma/test.db`, runs `prisma db push`, generates Prisma Client, then runs Vitest. Frontend/admin tests use Vitest.
 
-### Code Review
-The project uses Codex for adversarial code review:
+Deployment/config changes should keep `drift-book-lite/backend/tests/deployment-config.test.js` current.
+
+## Project Structure
+
+```text
+.
+├── AGENTS.md
+├── CLAUDE.md
+├── REQUIREMENTS.md
+├── README.md
+├── docker-compose.yml
+├── data/                         # local-only reference files, gitignored
+├── scripts/
+│   ├── windows/                  # no-Docker Windows helpers
+│   └── windows-docker/           # Windows Docker helpers
+└── drift-book-lite/
+    ├── backend/
+    │   ├── prisma/schema.prisma
+    │   ├── src/
+    │   │   ├── app.js
+    │   │   ├── lib/env.js
+    │   │   ├── lib/prisma.js
+    │   │   ├── routes/
+    │   │   └── services/
+    │   └── tests/
+    ├── frontend/
+    ├── admin-frontend/
+    └── resources/
+        ├── default-site-assets/
+        ├── default-sensitive-words/
+        └── default-teacher-roster/
+```
+
+## Data And Resource Rules
+
+- `data/` is local-only and gitignored. Do not rely on it in application runtime code.
+- Default site images are committed under `drift-book-lite/resources/default-site-assets`.
+- Default sensitive word files are committed under `drift-book-lite/resources/default-sensitive-words`.
+- The cleaned teacher roster is committed under `drift-book-lite/resources/default-teacher-roster/2025-teachers.txt`.
+- The student roster is deployment data. It should be provided via `STUDENT_ROSTER_PATH`, commonly repo-root `2025学年学生信息.xls` or `package-data/student-roster.xls`.
+- Uploaded runtime copies live under `UPLOADS_DIR`; do not delete them unless no configuration references them.
+
+## Current Functional Notes
+
+- R-001 completed: large catalog import and bad-batch deletion were optimized/fixed.
+- R-002 completed: admin users can manage passwords independently; bootstrap only creates missing accounts.
+- R-003 completed: admin carousel deletion removes uploaded copies while preserving default source assets.
+- R-008 completed: SQLite WAL, compression, sensitive word cache, and homepage cache are in place.
+- R-009 completed: teacher roster uses a cleaned one-time built-in list; teacher review submissions validate by teacher name only.
+- R-004, R-005, R-006, R-007, and R-010 still require confirmation or future implementation. Check `REQUIREMENTS.md` for exact status.
+
+## Backend Behavior Pointers
+
+- Public routes: `drift-book-lite/backend/src/routes/public.js`
+- Admin routes: `drift-book-lite/backend/src/routes/admin.js`
+- Core library/review/import logic: `drift-book-lite/backend/src/services/library.js`
+- Student roster logic: `drift-book-lite/backend/src/services/studentRoster.js`
+- Teacher roster logic: `drift-book-lite/backend/src/services/teacherRoster.js`
+- Default sensitive word import: `drift-book-lite/backend/src/services/defaultSensitiveWords.js`
+- Site assets: `drift-book-lite/backend/src/services/assets.js`
+
+Review identity behavior:
+
+- Student submissions require system ID and student name; ID-card suffix is checked when present in the roster.
+- Teacher submissions require teacher name and validate against `TeacherRoster.normalizedName`.
+- Public display names are derived server-side; teacher reviews display as `教师 {姓名}`.
+
+Cache invalidation:
+
+- Sensitive words cache TTL: 60 seconds.
+- Homepage cache TTL: 30 seconds.
+- Mutations that affect sensitive words, review status, or featured reviews should invalidate the related cache.
+
+## Deployment Notes
+
+Docker Compose still exists and is covered by deployment config tests, but R-006 tracks simplifying deployment and reducing Docker dependence. For school Windows deployments, prefer the maintained no-Docker instructions in `scripts/windows/WINDOWS-NO-DOCKER-DEPLOY.md` unless the user explicitly wants Docker.
+
+Root `.env` drives Docker Compose:
+
+- `BACKEND_PORT`, `FRONTEND_PORT`, `ADMIN_FRONTEND_PORT`
+- `APP_BASE_URL`, `ADMIN_APP_BASE_URL`
+- `FRONTEND_API_BASE_URL`, `ADMIN_FRONTEND_API_BASE_URL`
+- `JWT_SECRET`, `ADMIN_USERNAMES`, `ADMIN_PASSWORD`
+- Student and teacher roster paths are set inside `docker-compose.yml` to container paths.
+
+When adding a new bundled resource directory, update all of these together:
+
+- `docker-compose.yml`
+- `.env.example`
+- `drift-book-lite/backend/.env.example`
+- Windows deploy scripts if they generate `.env`
+- README/deployment docs
+- `deployment-config.test.js`
+
+## Completion Checklist
+
+Before saying a task is done:
+
 ```bash
-/codex:review --base main     # Review working tree against main
+git status --short --branch
+git diff --check
 ```
 
-## Deployment
-
-### Docker Deployment
-The project includes Docker support:
-```bash
-docker-compose up                    # Run all three services
-docker-compose down                  # Stop services
-```
-
-Services run on:
-- Backend: http://localhost:3001
-- Frontend: http://localhost:5173
-- Admin: http://localhost:5174
-
-### Environment Variables for Production
-Set via `.env` or container env vars:
-- `DATABASE_URL`: Prisma connection string
-- `JWT_SECRET`: Secure random key
-- `ALLOWED_ORIGINS`: CORS whitelist
-- `UPLOADS_DIR`: File upload directory path
-
-## Key Implementation Details
-
-### Cache Invalidation Pattern
-When writing admin endpoints that modify sensitive words or review data:
-1. Import invalidation functions from `library.js`:
-   ```javascript
-   const { invalidateSensitiveWordsCache, invalidateHomepageCache } = require("../services/library");
-   ```
-2. Call after mutations:
-   ```javascript
-   await prisma.sensitiveWord.create(...);
-   invalidateSensitiveWordsCache();  // Clear TTL cache
-   ```
-
-### Data & Reference Files
-Project-level reference files (CSV/XLSX book catalogs, requirement docs) live in `data/` at the repo root. This directory is gitignored and not committed — files there are local-only and will not be present after a clean clone.
-
-Application-level resources (default site assets, sensitive word lists) live in `drift-book-lite/resources/`.
-
-**Student roster** has deployment-specific paths and must NOT be placed in `data/`:
-- Docker: `./2025学年学生信息.xls` at repo root (mounted by `docker-compose.yml`)
-- Windows no-Docker: `package-data\student-roster.xls` (falls back to root `2025学年学生信息.xls`)
-
-Placing the roster under `data/` will cause `loadStudentRosterRows()` to return an empty set and student identity validation to fail.
-
-### API Response Format
-All endpoints return JSON with consistent error handling:
-- Success: `{ data: {...} }` or direct data for simple responses
-- Error: `{ message: "User-friendly error message" }` (HTTP status codes: 400 for validation, 409 for conflicts, 500 for server errors)
-
-### File Uploads
-- Stored in `drift-book-lite/uploads/` (default; override with absolute `UPLOADS_DIR` env var)
-- Served via `GET /uploads/:filename`
-- Multer middleware validates and limits file size
-
-## Current Status & Requirements
-
-**Completed (P0-P1)**:
-- R-001: Large file import optimization (batch strategies, transaction fixes)
-- R-002: Admin password management (independent per-admin, safe initialization)
-- R-003: Carousel asset deletion
-- R-008: Backend performance optimizations (WAL mode, gzip, caching)
-
-**In Progress / Pending**:
-- R-004: Student data import (needs student ID format confirmation)
-- R-005: Review export functionality (needs format and schema design)
-- R-006: Non-Docker deployment simplification
-- R-007: Frontend text/UX refinements
-- R-009: Teacher data import (future scope)
-- R-010: iPad whitelist access control (likely network-level, not code)
-
-See `REQUIREMENTS.md` for detailed status and notes.
-
-## Debugging Tips
-
-**Backend doesn't start?**
-- Check `.env` file exists with `DATABASE_URL` set
-- Verify no port 3001 conflict: `lsof -i :3001`
-- Check Prisma migrations applied: `npx prisma migrate status`
-
-**Database locked or slow?**
-- WAL files (`*.db-wal`, `*.db-shm`) appearing is normal and expected
-- Check `.gitignore` includes WAL test artifacts
-- SQLite is write-limited; if hit production limits, consider PostgreSQL
-
-**Admin login fails?**
-- Ensure admin user created: `npm run bootstrap` (if script available)
-- Check JWT_SECRET set in both backend and frontend `.env`
-- Verify token expiry not the issue
-
-**Cache not updating?**
-- Check invalidation functions called after mutations
-- TTL timeout: sensitive words (60s), homepage (30s)
-- Use `npm test` to verify cache behavior
-
-## Quick Reference
-
-| Task | Command |
-|------|---------|
-| Dev: Start all services | `npm run dev` (in each `drift-book-lite/*` dir) |
-| Dev: Run backend tests | `cd drift-book-lite/backend && npm test` |
-| Dev: Reset database | `rm drift-book-lite/backend/prisma/dev.db && npx prisma migrate dev` |
-| Lint/Format | Check individual `package.json` for eslint/prettier scripts |
-| Build for production | `npm run build` in frontend and admin-frontend |
-| Docker: Full stack | `docker-compose up` from repo root |
-| Review code | `/codex:review --base main` |
+Then run the relevant test commands and report exact results. If work was merged to `main`, rerun relevant tests on `main` before pushing.
