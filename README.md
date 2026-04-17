@@ -11,10 +11,11 @@
 
 1. 安装 Docker Desktop 或 Docker Engine + Docker Compose
 2. 把项目拷到部署电脑
-3. 查出这台电脑的局域网 IP，例如 `192.168.1.50`
-4. 修改根目录 `.env`，把前端 API 地址从 `localhost` 改成这台机器的局域网 IP
-5. 执行 `docker compose up --build -d`
-6. 在局域网其他设备访问：
+3. 将学生名单文件（`2025学年学生信息.xls`）放到**项目根目录**（与 `docker-compose.yml` 同级）；缺失时后端仍可启动，但学生身份校验会失败
+4. 查出这台电脑的局域网 IP，例如 `192.168.1.50`
+5. 修改根目录 `.env`，把前端 API 地址从 `localhost` 改成这台机器的局域网 IP
+6. 执行 `docker compose up --build -d`
+7. 在局域网其他设备访问：
    - 学生端：`http://192.168.1.50:5174`
    - 管理端：`http://192.168.1.50:5175`
 

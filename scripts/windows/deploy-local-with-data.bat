@@ -138,7 +138,7 @@ if "!ADMIN_PASSWORD!"=="" set "ADMIN_PASSWORD=change-this-password"
 set "JWT_SECRET=drift-local-!RANDOM!-!RANDOM!-!RANDOM!-!RANDOM!-!RANDOM!"
 
 (
-  echo DATABASE_URL="file:./prisma/dev.db"
+  echo DATABASE_URL="file:./dev.db"
   echo PORT=8080
   echo JWT_SECRET="!JWT_SECRET!"
   echo ADMIN_USERNAMES="admin1,admin2,admin3"
