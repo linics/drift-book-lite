@@ -29,6 +29,7 @@ enum ImportStatus {
 enum ReviewIdentityType {
   legacy
   student
+  teacher
 }
 
 model AdminUser {
@@ -80,10 +81,12 @@ model BookReview {
   status              ReviewStatus       @default(pending)
   identityType        ReviewIdentityType @default(legacy)
   studentRosterId     Int?
+  teacherRosterId     Int?
   studentSystemId     String?
   studentName         String?
   studentClassName    String?
   studentIdCardSuffix String?
+  teacherName         String?
   sensitiveHit        Boolean            @default(false)
   matchedSensitiveWords Json?
   isFeatured          Boolean            @default(false)
@@ -100,10 +103,12 @@ model BookReview {
   reviewedBy          AdminUser?         @relation("ReviewedBy", fields: [reviewedById], references: [id])
   editedBy            AdminUser?         @relation("EditedBy", fields: [editedById], references: [id])
   studentRoster       StudentRoster?     @relation(fields: [studentRosterId], references: [id], onDelete: SetNull)
+  teacherRoster       TeacherRoster?     @relation(fields: [teacherRosterId], references: [id], onDelete: SetNull)
 
   @@index([bookId, status, createdAt])
   @@index([bookId, isFeatured, featuredOrder])
   @@index([studentSystemId, bookId])
+  @@index([teacherName, bookId])
 }
 
 model ImportBatch {
@@ -145,6 +150,15 @@ model StudentRoster {
   reviews      BookReview[]
 
   @@index([studentName, className])
+}
+
+model TeacherRoster {
+  id             Int          @id @default(autoincrement())
+  teacherName    String
+  normalizedName String       @unique
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  reviews        BookReview[]
 }
 
 model SensitiveWord {

@@ -24,9 +24,11 @@ export function BookDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState("");
   const [formState, setFormState] = useState({
+    identityType: "student",
     systemId: "",
     studentName: "",
     idCardSuffix: "",
+    teacherName: "",
     content: "",
   });
 
@@ -80,9 +82,30 @@ export function BookDetailPage() {
     setSuccess("");
 
     try {
-      const response = await api.post(`/books/${bookId}/reviews`, formState);
+      const payload =
+        formState.identityType === "teacher"
+          ? {
+              identityType: "teacher",
+              teacherName: formState.teacherName,
+              content: formState.content,
+            }
+          : {
+              identityType: "student",
+              systemId: formState.systemId,
+              studentName: formState.studentName,
+              idCardSuffix: formState.idCardSuffix,
+              content: formState.content,
+            };
+      const response = await api.post(`/books/${bookId}/reviews`, payload);
       setSuccess(response.data.message);
-      setFormState({ systemId: "", studentName: "", idCardSuffix: "", content: "" });
+      setFormState((current) => ({
+        identityType: current.identityType,
+        systemId: "",
+        studentName: "",
+        idCardSuffix: "",
+        teacherName: "",
+        content: "",
+      }));
       await loadData();
     } catch (requestError) {
       setError(requestError.response?.data?.message || "留言提交失败");
@@ -209,30 +232,75 @@ export function BookDetailPage() {
             </div>
 
             <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-              <Field label="学号">
-                <TextInput
-                  value={formState.systemId}
-                  onChange={(e) => setFormState((s) => ({ ...s, systemId: e.target.value }))}
-                  disabled={submitting}
-                  placeholder="例如 320250002"
-                />
-              </Field>
-              <Field label="姓名">
-                <TextInput
-                  value={formState.studentName}
-                  onChange={(e) => setFormState((s) => ({ ...s, studentName: e.target.value }))}
-                  disabled={submitting}
-                  placeholder="请输入学籍姓名"
-                />
-              </Field>
-              <Field label="身份证后四位" hint="如系统留存该信息，则用于校验。">
-                <TextInput
-                  value={formState.idCardSuffix}
-                  onChange={(e) => setFormState((s) => ({ ...s, idCardSuffix: e.target.value.toUpperCase() }))}
-                  disabled={submitting}
-                  placeholder="可留空"
-                />
-              </Field>
+              <div className="flex flex-wrap gap-3 rounded-[1.6rem] border border-stone-200 bg-white/60 p-2">
+                {["student", "teacher"].map((identityType) => {
+                  const active = formState.identityType === identityType;
+                  const label = identityType === "student" ? "学生" : "教师";
+                  return (
+                    <button
+                      key={identityType}
+                      type="button"
+                      className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
+                        active
+                          ? "bg-primary text-white shadow-[0_4px_14px_rgba(139,47,42,0.22)]"
+                          : "bg-white text-stone-600 hover:text-stone-900"
+                      }`}
+                      onClick={() =>
+                        setFormState((s) => ({
+                          ...s,
+                          identityType,
+                          systemId: "",
+                          studentName: "",
+                          idCardSuffix: "",
+                          teacherName: "",
+                        }))
+                      }
+                      disabled={submitting}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {formState.identityType === "teacher" ? (
+                <Field label="教师姓名">
+                  <TextInput
+                    value={formState.teacherName}
+                    onChange={(e) => setFormState((s) => ({ ...s, teacherName: e.target.value }))}
+                    disabled={submitting}
+                    placeholder="请输入教师姓名"
+                  />
+                </Field>
+              ) : (
+                <>
+                  <Field label="学号">
+                    <TextInput
+                      value={formState.systemId}
+                      onChange={(e) => setFormState((s) => ({ ...s, systemId: e.target.value }))}
+                      disabled={submitting}
+                      placeholder="例如 320250002"
+                    />
+                  </Field>
+                  <Field label="姓名">
+                    <TextInput
+                      value={formState.studentName}
+                      onChange={(e) => setFormState((s) => ({ ...s, studentName: e.target.value }))}
+                      disabled={submitting}
+                      placeholder="请输入学籍姓名"
+                    />
+                  </Field>
+                  <Field label="身份证后四位" hint="如系统留存该信息，则用于校验。">
+                    <TextInput
+                      value={formState.idCardSuffix}
+                      onChange={(e) =>
+                        setFormState((s) => ({ ...s, idCardSuffix: e.target.value.toUpperCase() }))
+                      }
+                      disabled={submitting}
+                      placeholder="可留空"
+                    />
+                  </Field>
+                </>
+              )}
               <Field label="接龙内容" hint="请输入 1 到 500 字的阅读感受或回应。">
                 <TextArea
                   rows={5}

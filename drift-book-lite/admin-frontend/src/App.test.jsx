@@ -342,6 +342,30 @@ describe("ReviewsPage", () => {
     expect(screen.getByText(/班级：高一（1）班/)).toBeInTheDocument();
   });
 
+  test("shows teacher identity info", async () => {
+    mockGet.mockImplementation(() =>
+      Promise.resolve({
+        data: {
+          reviews: [
+            {
+              ...pendingReview,
+              displayName: "教师 马伟",
+              studentIdentity: null,
+              teacherIdentity: { teacherName: "马伟" },
+            },
+          ],
+        },
+      })
+    );
+
+    wrap(<ReviewsPage token={TOKEN} onLogout={NOOP} />);
+
+    await screen.findByText("漂流书目");
+    expect(screen.getByText(/公开显示：教师 马伟/)).toBeInTheDocument();
+    expect(screen.getByText(/教师姓名：马伟/)).toBeInTheDocument();
+    expect(screen.queryByText(/来源：历史旧评语/)).not.toBeInTheDocument();
+  });
+
   test("exports all reviews as csv", async () => {
     const createObjectUrl = vi.fn(() => "blob:reviews");
     const revokeObjectUrl = vi.fn();

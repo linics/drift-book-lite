@@ -9,6 +9,7 @@ const {
   normalizeIdCardSuffix,
   parseStudentCohort,
 } = require("./studentRoster");
+const { normalizeTeacherName } = require("./teacherRoster");
 
 const SEARCH_CANDIDATE_LIMIT = 80;
 const SEARCH_BATCH_SIZE = 80;
@@ -724,9 +725,21 @@ function serializeStudentIdentity(review) {
   };
 }
 
+function serializeTeacherIdentity(review) {
+  if (review.identityType !== "teacher") return null;
+
+  return {
+    teacherName: review.teacherName,
+  };
+}
+
 function getReviewDisplayName(review) {
   if (review.identityType === "student") {
     return buildStudentDisplayName(review.studentSystemId, review.studentName) || review.displayName;
+  }
+  if (review.identityType === "teacher") {
+    const teacherName = normalizeTeacherName(review.teacherName || review.displayName);
+    return teacherName ? `教师 ${teacherName}` : review.displayName;
   }
   return review.displayName;
 }
@@ -742,6 +755,7 @@ function serializeReviewForAdmin(review) {
     status: review.status,
     identityType: review.identityType,
     studentIdentity: serializeStudentIdentity(review),
+    teacherIdentity: serializeTeacherIdentity(review),
     sensitiveHit: Boolean(review.sensitiveHit),
     matchedSensitiveWords: Array.isArray(review.matchedSensitiveWords)
       ? review.matchedSensitiveWords
@@ -892,6 +906,23 @@ async function resolveStudentIdentity({ systemId, studentName, idCardSuffix }) {
   return roster;
 }
 
+async function resolveTeacherIdentity({ teacherName }) {
+  const normalizedName = normalizeTeacherName(teacherName);
+  if (!normalizedName) {
+    throw new HttpError(400, "教师身份校验失败");
+  }
+
+  const roster = await prisma.teacherRoster.findUnique({
+    where: { normalizedName },
+  });
+
+  if (!roster) {
+    throw new HttpError(400, "教师身份校验失败");
+  }
+
+  return roster;
+}
+
 let _sensitiveWordsCache = null;
 let _sensitiveWordsCacheAt = 0;
 const SENSITIVE_WORDS_TTL = 60_000;
@@ -926,12 +957,16 @@ async function detectSensitiveWords(content) {
   };
 }
 
-async function ensureNoDuplicateReview({ systemId, bookIds, content }) {
-  if (!systemId) return;
+async function ensureNoDuplicateReview({ studentSystemId, teacherName, bookIds, content }) {
+  if (!studentSystemId && !teacherName) return;
+
+  const identityWhere = studentSystemId
+    ? { studentSystemId }
+    : { identityType: "teacher", teacherName };
 
   const reviews = await prisma.bookReview.findMany({
     where: {
-      studentSystemId: systemId,
+      ...identityWhere,
       bookId: { in: bookIds },
     },
     select: {
@@ -1152,15 +1187,35 @@ async function createReview(bookId, payload) {
       displayName: String(payload.displayName || "").trim(),
       identityType: "legacy",
       studentRosterId: null,
+      teacherRosterId: null,
       studentSystemId: null,
       studentName: null,
       studentClassName: null,
       studentIdCardSuffix: null,
+      teacherName: null,
+    };
+  } else if (payload.identityType === "teacher") {
+    const roster = await resolveTeacherIdentity(payload);
+    await ensureNoDuplicateReview({
+      teacherName: roster.teacherName,
+      bookIds: books.map((book) => book.id),
+      content,
+    });
+    identityData = {
+      displayName: `教师 ${roster.teacherName}`,
+      identityType: "teacher",
+      studentRosterId: null,
+      teacherRosterId: roster.id,
+      studentSystemId: null,
+      studentName: null,
+      studentClassName: null,
+      studentIdCardSuffix: null,
+      teacherName: roster.teacherName,
     };
   } else {
     const roster = await resolveStudentIdentity(payload);
     await ensureNoDuplicateReview({
-      systemId: roster.systemId,
+      studentSystemId: roster.systemId,
       bookIds: books.map((book) => book.id),
       content,
     });
@@ -1168,10 +1223,12 @@ async function createReview(bookId, payload) {
       displayName: buildStudentDisplayName(roster.systemId, roster.studentName),
       identityType: "student",
       studentRosterId: roster.id,
+      teacherRosterId: null,
       studentSystemId: roster.systemId,
       studentName: roster.studentName,
       studentClassName: roster.className,
       studentIdCardSuffix: roster.idCardSuffix,
+      teacherName: null,
     };
   }
 
@@ -1801,6 +1858,7 @@ async function exportAdminReviewsCsv() {
     "届别",
     "班级",
     "身份证后四位",
+    "教师姓名",
     "原文",
     "最终展示文本",
     "是否精选",
@@ -1824,6 +1882,7 @@ async function exportAdminReviewsCsv() {
         review.studentIdentity?.cohort || "",
         review.studentIdentity?.className || "",
         review.studentIdentity?.idCardSuffix || "",
+        review.teacherIdentity?.teacherName || "",
         review.originalContent,
         review.finalContent,
         review.isFeatured ? "是" : "否",

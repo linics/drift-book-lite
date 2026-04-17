@@ -332,4 +332,31 @@ describe("BookDetailPage", () => {
       })
     );
   });
+
+  test("submit review form supports teacher identity", async () => {
+    mockPost.mockResolvedValue({ data: { message: "留言已提交，等待审核。" } });
+
+    render(<App />);
+
+    await screen.findByText("漂流书目");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "教师" }));
+    expect(screen.queryByPlaceholderText("例如 320250002")).not.toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText("请输入教师姓名"), "马伟");
+    await user.type(screen.getByPlaceholderText("写下你想接上的这一层内容。"), "教师接龙内容");
+
+    await user.click(screen.getByRole("button", { name: "提交并进入审核" }));
+
+    expect(await screen.findByText("留言已提交，等待审核。")).toBeInTheDocument();
+    expect(mockPost).toHaveBeenCalledWith(
+      "/books/bk1/reviews",
+      expect.objectContaining({
+        identityType: "teacher",
+        teacherName: "马伟",
+        content: "教师接龙内容",
+      })
+    );
+  });
 });

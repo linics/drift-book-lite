@@ -12,11 +12,19 @@ const {
 const router = express.Router();
 
 const createReviewSchema = z.object({
+  identityType: z.enum(["student", "teacher"]).default("student"),
   systemId: z.string().trim().min(1).max(20),
   studentName: z.string().trim().min(1).max(50),
   idCardSuffix: z.string().trim().min(4).max(4).optional().or(z.literal("")),
+  teacherName: z.string().trim().min(1).max(50).optional(),
   content: z.string().trim().min(1).max(500),
-});
+}).or(
+  z.object({
+    identityType: z.literal("teacher"),
+    teacherName: z.string().trim().min(1).max(50),
+    content: z.string().trim().min(1).max(500),
+  })
+);
 
 router.get("/site-assets", async (_req, res) => {
   const assets = await getSiteAsset();

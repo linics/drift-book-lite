@@ -174,6 +174,8 @@ export function ReviewsPage({ token, onLogout }) {
                         <span>班级：{review.studentIdentity.className}</span>
                         <span>身份证后四位：{review.studentIdentity.idCardSuffix || "未提供"}</span>
                       </>
+                    ) : review.teacherIdentity ? (
+                      <span>教师姓名：{review.teacherIdentity.teacherName}</span>
                     ) : (
                       <span>来源：历史旧评语</span>
                     )}

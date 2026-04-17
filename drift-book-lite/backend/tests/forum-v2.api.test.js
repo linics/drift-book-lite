@@ -27,8 +27,9 @@ async function clearData() {
   const tables = [
     "FeaturedReview",
     "SensitiveWord",
-    "StudentRoster",
     "BookReview",
+    "StudentRoster",
+    "TeacherRoster",
     "Book",
     "ImportBatch",
     "SiteAsset",
@@ -282,6 +283,79 @@ describe("forum v2 api", () => {
     ]);
   });
 
+  test("queues verified teacher messages and exposes teacher identity", async () => {
+    const adminToken = await loginAs("admin1");
+    const book = await importSingleBook(adminToken, "教师接龙图书");
+
+    const submitResponse = await request(app).post(`/api/books/${book.id}/reviews`).send({
+      identityType: "teacher",
+      teacherName: "马  伟",
+      content: "教师接龙留言",
+    });
+    expect(submitResponse.status).toBe(201);
+
+    const adminPendingResponse = await request(app)
+      .get("/api/admin/reviews")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(adminPendingResponse.status).toBe(200);
+    expect(adminPendingResponse.body.reviews[0]).toEqual(
+      expect.objectContaining({
+        identityType: "teacher",
+        teacherIdentity: expect.objectContaining({
+          teacherName: "马伟",
+        }),
+        studentIdentity: null,
+        displayName: "教师 马伟",
+      })
+    );
+
+    const approveResponse = await request(app)
+      .patch(`/api/admin/reviews/${adminPendingResponse.body.reviews[0].id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        action: "approve",
+        finalContent: "教师接龙留言",
+      });
+    expect(approveResponse.status).toBe(200);
+
+    const publicApprovedResponse = await request(app).get(`/api/books/${book.id}/reviews`);
+    expect(publicApprovedResponse.status).toBe(200);
+    expect(publicApprovedResponse.body.reviews).toEqual([
+      expect.objectContaining({
+        displayName: "教师 马伟",
+        content: "教师接龙留言",
+      }),
+    ]);
+  });
+
+  test("rejects unknown teacher identity and duplicate teacher content for the same book", async () => {
+    const adminToken = await loginAs("admin1");
+    const book = await importSingleBook(adminToken, "教师重复图书");
+
+    const unknownResponse = await request(app).post(`/api/books/${book.id}/reviews`).send({
+      identityType: "teacher",
+      teacherName: "不存在",
+      content: "未知教师留言",
+    });
+    expect(unknownResponse.status).toBe(400);
+    expect(unknownResponse.body.message).toContain("教师身份校验失败");
+
+    const firstResponse = await request(app).post(`/api/books/${book.id}/reviews`).send({
+      identityType: "teacher",
+      teacherName: "马伟",
+      content: "重复教师留言",
+    });
+    expect(firstResponse.status).toBe(201);
+
+    const duplicateResponse = await request(app).post(`/api/books/${book.id}/reviews`).send({
+      identityType: "teacher",
+      teacherName: "马伟",
+      content: "重复教师留言",
+    });
+    expect(duplicateResponse.status).toBe(409);
+    expect(duplicateResponse.body.message).toContain("不能重复提交");
+  });
+
   test("keeps public and featured sequence numbers contiguous when invisible reviews exist", async () => {
     const adminToken = await loginAs("admin1");
     const book = await importSingleBook(adminToken, "连续层号图书");
@@ -484,6 +558,7 @@ describe("forum v2 api", () => {
     expect(exportResponse.text.startsWith("\uFEFF")).toBe(true);
     expect(exportResponse.text).toContain("评论ID,状态,图书标题,公开显示名");
     expect(exportResponse.text).toContain("2025届 王沁愉");
+    expect(exportResponse.text).toContain("教师姓名");
     expect(exportResponse.text).toContain("导出测试留言");
   });
 

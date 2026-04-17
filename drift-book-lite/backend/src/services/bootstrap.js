@@ -3,6 +3,7 @@ const { prisma } = require("../lib/prisma");
 const { adminUsernames, adminPassword } = require("../lib/env");
 const { defaultProcessContent, syncDefaultSiteAssets } = require("./assets");
 const { ensureStudentRoster } = require("./studentRoster");
+const { ensureTeacherRoster } = require("./teacherRoster");
 
 async function ensureAdminUsers() {
   const passwordHash = await bcrypt.hash(adminPassword, 10);
@@ -59,6 +60,7 @@ async function bootstrapSystem() {
     fillEmptyCarousel: siteAsset.created,
   });
   await ensureStudentRoster();
+  await ensureTeacherRoster();
   await migrateLegacyReviews();
 }
 

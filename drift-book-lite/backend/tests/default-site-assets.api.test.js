@@ -49,8 +49,9 @@ async function clearTableIfExists(tableName) {
 async function clearData() {
   const tables = [
     "SensitiveWord",
-    "StudentRoster",
     "BookReview",
+    "StudentRoster",
+    "TeacherRoster",
     "Book",
     "ImportBatch",
     "SiteAsset",
