@@ -74,7 +74,7 @@ Create `.env` files in respective app directories:
 DATABASE_URL="file:./dev.db"
 JWT_SECRET="your-secret-key"
 ALLOWED_ORIGINS="http://localhost:5173,http://localhost:5174"
-UPLOADS_DIR="./uploads"
+# UPLOADS_DIR defaults to drift-book-lite/uploads; omit or use absolute path
 ```
 
 ### Database Migrations
@@ -205,7 +205,7 @@ All endpoints return JSON with consistent error handling:
 - Error: `{ message: "User-friendly error message" }` (HTTP status codes: 400 for validation, 409 for conflicts, 500 for server errors)
 
 ### File Uploads
-- Stored in `drift-book-lite/backend/uploads/` (or `UPLOADS_DIR` env var)
+- Stored in `drift-book-lite/uploads/` (default; override with absolute `UPLOADS_DIR` env var)
 - Served via `GET /uploads/:filename`
 - Multer middleware validates and limits file size
 
