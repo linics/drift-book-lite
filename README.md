@@ -590,8 +590,8 @@ docker compose up --build -d
 | `ADMIN_PASSWORD` | 缺失管理员账号的初始密码 | `change-this-password` |
 | `APP_BASE_URL` | 学生端地址 | `http://localhost:5174` |
 | `ADMIN_APP_BASE_URL` | 管理端地址 | `http://localhost:5175` |
-| `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | `drift-book-lite/resources/default-site-assets` |
-| `DEFAULT_SENSITIVE_WORDS_DIR` | 默认敏感词目录路径 | `drift-book-lite/resources/default-sensitive-words` |
+| `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | 留空自动检测；需覆盖时使用**绝对路径** |
+| `DEFAULT_SENSITIVE_WORDS_DIR` | 默认敏感词目录路径 | 留空自动检测；需覆盖时使用**绝对路径** |
 
 ## 图书导入与素材
 
@@ -632,7 +632,7 @@ docker compose up --build -d
 - 内置快照随项目代码一起部署，不依赖目标机器在运行时访问 GitHub
 - 默认快照不包含政治类型、反动词库、民生词库、新思想启蒙、GFW 补充、零时-Tencent、网易前端过滤敏感词库等高误判或大杂包类别
 - 如需替换默认目录，可在后端设置 `DEFAULT_SENSITIVE_WORDS_DIR`
-- 上游来源与快照说明见 [SOURCES.md](/Users/linics/Documents/githubfiles/library-management-system/drift-book-lite/resources/default-sensitive-words/SOURCES.md)
+- 上游来源与快照说明见 [SOURCES.md](drift-book-lite/resources/default-sensitive-words/SOURCES.md)
 
 ## 主要接口
 
@@ -820,5 +820,5 @@ npm run build
 
 ## 子模块文档
 
-- [学生端说明](/Users/linics/Documents/githubfiles/library-management-system/drift-book-lite/frontend/README.md)
-- [管理端说明](/Users/linics/Documents/githubfiles/library-management-system/drift-book-lite/admin-frontend/README.md)
+- [学生端说明](drift-book-lite/frontend/README.md)
+- [管理端说明](drift-book-lite/admin-frontend/README.md)
