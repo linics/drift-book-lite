@@ -60,6 +60,7 @@ function buildLegacyGroupedId({ title, author, publisher, subtitle }) {
 
 async function clearData() {
   await prisma.bookReview.deleteMany();
+  await prisma.studentRoster.deleteMany();
   await prisma.book.deleteMany();
   await prisma.importBatch.deleteMany();
 }
@@ -257,6 +258,130 @@ describe("library grouped book ids and aggregation", () => {
     expect(storedReview).toEqual(
       expect.objectContaining({
         displayName: "旧链接读者",
+      })
+    );
+  });
+
+  test("student duplicate review check matches historical uppercase S-prefixed system ids", async () => {
+    const book = await prisma.book.create({
+      data: {
+        bookId: "student-s-prefix-duplicate",
+        title: "学号兼容书",
+        normalizedTitle: normalizeTitle("学号兼容书"),
+        author: "作者甲",
+        publisher: "出版社甲",
+        totalCopies: 1,
+        availableCopies: 1,
+      },
+    });
+    await prisma.studentRoster.create({
+      data: {
+        systemId: "320250002",
+        studentName: "王沁愉",
+        className: "高一(01)班",
+        idCardSuffix: "3225",
+      },
+    });
+    await prisma.bookReview.create({
+      data: {
+        bookId: book.id,
+        displayName: "2025届 王沁愉",
+        originalContent: "同一本书不能重复提交",
+        finalContent: "同一本书不能重复提交",
+        identityType: "student",
+        studentSystemId: "S320250002",
+        studentName: "王沁愉",
+        studentClassName: "高一(01)班",
+        studentIdCardSuffix: "3225",
+      },
+    });
+
+    await expect(
+      createReview(String(book.id), {
+        systemId: "320250002",
+        studentName: "王沁愉",
+        idCardSuffix: "3225",
+        content: "同一本书不能重复提交",
+      })
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  test("student duplicate review check matches historical lowercase s-prefixed system ids", async () => {
+    const book = await prisma.book.create({
+      data: {
+        bookId: "student-lower-s-prefix-duplicate",
+        title: "小写学号兼容书",
+        normalizedTitle: normalizeTitle("小写学号兼容书"),
+        author: "作者甲",
+        publisher: "出版社甲",
+        totalCopies: 1,
+        availableCopies: 1,
+      },
+    });
+    await prisma.studentRoster.create({
+      data: {
+        systemId: "320250002",
+        studentName: "王沁愉",
+        className: "高一(01)班",
+        idCardSuffix: "3225",
+      },
+    });
+    await prisma.bookReview.create({
+      data: {
+        bookId: book.id,
+        displayName: "2025届 王沁愉",
+        originalContent: "同一本书不能重复提交",
+        finalContent: "同一本书不能重复提交",
+        identityType: "student",
+        studentSystemId: "s320250002",
+        studentName: "王沁愉",
+        studentClassName: "高一(01)班",
+        studentIdCardSuffix: "3225",
+      },
+    });
+
+    await expect(
+      createReview(String(book.id), {
+        systemId: "320250002",
+        studentName: "王沁愉",
+        idCardSuffix: "3225",
+        content: "同一本书不能重复提交",
+      })
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  test("student identity lookup accepts existing S-prefixed roster ids without rewriting storage", async () => {
+    const book = await prisma.book.create({
+      data: {
+        bookId: "student-s-prefix-roster",
+        title: "旧学号存储书",
+        normalizedTitle: normalizeTitle("旧学号存储书"),
+        author: "作者甲",
+        publisher: "出版社甲",
+        totalCopies: 1,
+        availableCopies: 1,
+      },
+    });
+    await prisma.studentRoster.create({
+      data: {
+        systemId: "S320250002",
+        studentName: "王沁愉",
+        className: "高一(01)班",
+        idCardSuffix: "3225",
+      },
+    });
+
+    const review = await createReview(String(book.id), {
+      systemId: "320250002",
+      studentName: "王沁愉",
+      idCardSuffix: "3225",
+      content: "旧学号存储仍可校验",
+    });
+
+    const storedReview = await prisma.bookReview.findUnique({ where: { id: review.id } });
+    expect(storedReview).toEqual(
+      expect.objectContaining({
+        studentSystemId: "S320250002",
       })
     );
   });

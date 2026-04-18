@@ -7,6 +7,7 @@ import { SensitiveWordsPage } from "./pages/SensitiveWordsPage.jsx";
 import { AssetsPage } from "./pages/AssetsPage.jsx";
 import { AccountSettingsPage } from "./pages/AccountSettingsPage.jsx";
 import { AdminGuard } from "./components/AdminLayout.jsx";
+import { StudentRosterPage } from "./pages/StudentRosterPage.jsx";
 
 function AdminRoutes() {
   return (
@@ -14,6 +15,7 @@ function AdminRoutes() {
       {({ token, setToken }) => (
         <Routes>
           <Route path="/books" element={<BooksPage token={token} onLogout={() => setToken("")} />} />
+          <Route path="/student-roster" element={<StudentRosterPage token={token} onLogout={() => setToken("")} />} />
           <Route path="/reviews" element={<ReviewsPage token={token} onLogout={() => setToken("")} />} />
           <Route path="/featured" element={<FeaturedReviewsPage token={token} onLogout={() => setToken("")} />} />
           <Route path="/sensitive-words" element={<SensitiveWordsPage token={token} onLogout={() => setToken("")} />} />
