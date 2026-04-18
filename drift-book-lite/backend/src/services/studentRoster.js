@@ -1,7 +1,35 @@
 const fs = require("fs");
+const path = require("path");
+const { parse: csvParse } = require("csv-parse/sync");
 const XLSX = require("xlsx");
 const { prisma } = require("../lib/prisma");
 const { studentRosterPath } = require("../lib/env");
+
+function decodeRosterBuffer(buffer) {
+  const utf8 = buffer.toString("utf8");
+  const replacements = [...utf8].filter((c) => c === "\uFFFD").length;
+  if (replacements === 0) return utf8;
+  return new TextDecoder("gb18030").decode(buffer);
+}
+
+function parseRosterBuffer(buffer, filename) {
+  const ext = path.extname(String(filename || "")).toLowerCase();
+  if (ext === ".xls" || ext === ".xlsx") {
+    const workbook = XLSX.read(buffer, { cellDates: false });
+    const firstSheetName = workbook.SheetNames[0];
+    if (!firstSheetName) throw new Error("导入文件为空");
+    return XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" });
+  }
+  const content = decodeRosterBuffer(buffer);
+  const records = csvParse(content, {
+    bom: true,
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  });
+  if (records.length === 0) throw new Error("导入文件为空");
+  return records;
+}
 
 function normalizeCell(value) {
   return String(value ?? "").trim();
@@ -85,13 +113,7 @@ async function ensureStudentRoster() {
 }
 
 async function importStudentRoster(buffer, filename, { mode }) {
-  const workbook = XLSX.read(buffer, { cellDates: false });
-  const firstSheetName = workbook.SheetNames[0];
-  if (!firstSheetName) {
-    throw new Error("导入文件为空");
-  }
-
-  const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" });
+  const rawRows = parseRosterBuffer(buffer, filename);
 
   const totalRows = rawRows.length;
   let successRows = 0;
