@@ -1,10 +1,6 @@
-# Windows 无 Docker 部署说明
+# Windows 部署说明
 
-本文适用于以下场景：
-
-- 新电脑上已经装好了 Node.js，但 Docker 拉镜像失败
-- 希望先在 Windows 上把系统跑起来
-- 后续以“能长期稳定使用”为目标，而不是只做本地开发
+本文是 Windows 上部署”一本书的漂流”系统的完整参考文档。
 
 本文基于当前仓库结构：
 
@@ -14,21 +10,13 @@
 
 ## 一句话结论
 
-不用 Docker 也能部署。
+优先使用仓库根目录的脚本，双击即可：
 
-如果你使用的是打包好的本地完整包，优先使用脚本：
+1. 双击 `deploy.bat` 完成首次部署（按提示输入局域网 IP 和管理员密码）
+2. 后续双击 `start.bat` 日常启动
+3. 需要备份数据时双击 `backup.bat`
 
-1. 双击 `scripts\windows\deploy-local-with-data.bat` 完成首次部署
-2. 后续双击 `scripts\windows\start-local-services.bat` 日常启动
-3. 需要备份数据时双击 `scripts\windows\backup-local-data.bat`
-
-最直接的方式是：
-
-1. 在 `backend` 启动后端
-2. 在 `frontend` 构建学生端并发布到 `5174`
-3. 在 `admin-frontend` 构建管理端并发布到 `5175`
-
-第一次部署时，确实需要分别进入 3 个目录执行命令。
+如果需要手动操作或排查问题，下面的章节会逐目录说明每一步。
 
 ## 先决条件
 
@@ -400,24 +388,18 @@ npm.cmd run build
 2. 重新执行 `npm.cmd run build`
 3. 重启对应静态服务
 
-## 懒人启动方式
+## 快捷入口说明
 
-仓库根目录提供了 5 个 Windows 启动脚本：
+仓库根目录提供 3 个面向用户的快捷脚本：
 
-- `start-all.bat`
-- `start-backend.bat`
-- `start-frontend.bat`
-- `start-admin.bat`
-- `build-frontends.bat`
+| 脚本 | 用途 |
+|------|------|
+| `deploy.bat` | 首次部署，或需要更新 IP / 密码时重新配置 |
+| `start.bat` | 日常启动，打开 3 个独立窗口分别运行后端、学生端、管理端 |
+| `backup.bat` | 备份数据库和上传文件到 `backups/` 目录 |
 
-用法：
+这三个脚本实际调用的是 `scripts\windows\` 目录下的工具脚本。高级用户可以直接调用：
 
-1. 首次部署或前端代码有变更时，先双击 `build-frontends.bat`
-2. 日常启动时，直接双击 `start-all.bat`
-3. 如果只想单独重启某个服务，就双击对应的单独脚本
-
-说明：
-
-- 这些脚本都按仓库根目录的相对路径工作
-- `start-all.bat` 会打开 3 个独立窗口
-- 如果前端构建目录 `dist` 不存在，前端脚本会提示先执行 `build-frontends.bat`
+- `scripts\windows\build-frontends.bat`：单独重新构建前端（例如仅前端有代码变更时）
+- `scripts\windows\start-all.bat`：等价于 `start.bat`
+- `scripts\windows\start-backend.bat` / `start-frontend.bat` / `start-admin.bat`：单独重启某个服务

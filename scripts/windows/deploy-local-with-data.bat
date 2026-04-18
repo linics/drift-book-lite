@@ -19,7 +19,7 @@ for %%I in ("%~dp0..\..") do set "ROOT=%%~fI"
 cd /d "%ROOT%"
 set "ROOT_SLASH=%ROOT:\=/%"
 
-echo Drift Book Lite - Windows local deploy without Docker
+echo Drift Book Lite - Windows local deploy
 echo Root: %CD%
 echo.
 
@@ -88,7 +88,7 @@ popd
 
 echo.
 echo Local deployment complete.
-echo Use scripts\windows\start-local-services.bat for daily startup.
+echo Use start.bat for daily startup.
 pause
 exit /b 0
 
@@ -129,9 +129,46 @@ if exist "drift-book-lite\backend\.env" (
 )
 if /i not "!WRITE_ENV!"=="Y" exit /b 0
 
-set /p "LAN_HOST=Enter this computer LAN IP or host for other devices. Blank = localhost: "
+echo Detecting LAN IP (10.x.x.x, physical adapters only)...
+set "IP_COUNT=0"
+set "DETECTED_IP="
+set "_TMP=%TEMP%\dbl-ips-%RANDOM%.txt"
+powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '10.*' -and $_.InterfaceAlias -notmatch 'vEthernet|VMware|VirtualBox|Loopback|WSL|Tunnel|isatap' } | Select-Object -ExpandProperty IPAddress" > "!_TMP!" 2>nul
+if exist "!_TMP!" (
+  for /f "tokens=* eol=" %%I in ("!_TMP!") do (
+    set /a IP_COUNT+=1
+    set "DETECTED_IP=%%I"
+  )
+  del "!_TMP!" >nul 2>nul
+)
+
+if "!IP_COUNT!"=="1" goto :_ip_one
+if !IP_COUNT! GTR 1 goto :_ip_many
+
+:_ip_none
+echo Could not detect a 10.x.x.x address automatically.
+set /p "LAN_HOST=Enter LAN IP for other devices. Blank = localhost: "
+if "!LAN_HOST!"=="" set "LAN_HOST=localhost"
+goto :_ip_done
+
+:_ip_one
+echo Detected LAN IP: !DETECTED_IP!
+set /p "LAN_HOST=Press Enter to confirm, or type a different IP: "
+if "!LAN_HOST!"=="" set "LAN_HOST=!DETECTED_IP!"
+goto :_ip_done
+
+:_ip_many
+echo Multiple 10.x.x.x addresses found:
+set "_TMP2=%TEMP%\dbl-ips-detail-%RANDOM%.txt"
+powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '10.*' -and $_.InterfaceAlias -notmatch 'vEthernet|VMware|VirtualBox|Loopback|WSL|Tunnel|isatap' } | ForEach-Object { '  ' + $_.IPAddress + '  [' + $_.InterfaceAlias + ']' }" > "!_TMP2!" 2>nul
+if exist "!_TMP2!" (
+  type "!_TMP2!"
+  del "!_TMP2!" >nul 2>nul
+)
+set /p "LAN_HOST=Enter the correct LAN IP for other devices: "
 if "!LAN_HOST!"=="" set "LAN_HOST=localhost"
 
+:_ip_done
 set /p "ADMIN_PASSWORD=Enter admin password. Blank = change-this-password: "
 if "!ADMIN_PASSWORD!"=="" set "ADMIN_PASSWORD=change-this-password"
 

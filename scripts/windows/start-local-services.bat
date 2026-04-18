@@ -5,19 +5,19 @@ for %%I in ("%~dp0..\..") do set "ROOT=%%~fI"
 cd /d "%ROOT%"
 
 if not exist "drift-book-lite\backend\node_modules" (
-  echo Backend dependencies are missing. Run deploy-local-with-data.bat first.
+  echo Backend dependencies are missing. Run deploy.bat first.
   pause
   exit /b 1
 )
 
 if not exist "drift-book-lite\frontend\dist" (
-  echo Student frontend dist is missing. Run deploy-local-with-data.bat first.
+  echo Student frontend dist is missing. Run deploy.bat first.
   pause
   exit /b 1
 )
 
 if not exist "drift-book-lite\admin-frontend\dist" (
-  echo Admin frontend dist is missing. Run deploy-local-with-data.bat first.
+  echo Admin frontend dist is missing. Run deploy.bat first.
   pause
   exit /b 1
 )
