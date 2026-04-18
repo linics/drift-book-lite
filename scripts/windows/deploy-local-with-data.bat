@@ -135,7 +135,7 @@ set "DETECTED_IP="
 set "_TMP=%TEMP%\dbl-ips-%RANDOM%.txt"
 powershell -NoProfile -Command "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '10.*' -and $_.InterfaceAlias -notmatch 'vEthernet|VMware|VirtualBox|Loopback|WSL|Tunnel|isatap' } | Select-Object -ExpandProperty IPAddress" > "!_TMP!" 2>nul
 if exist "!_TMP!" (
-  for /f "tokens=* eol=" %%I in ("!_TMP!") do (
+  for /f "usebackq tokens=* eol=" %%I in ("!_TMP!") do (
     set /a IP_COUNT+=1
     set "DETECTED_IP=%%I"
   )
