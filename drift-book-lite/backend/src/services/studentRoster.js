@@ -112,6 +112,12 @@ async function ensureStudentRoster() {
   });
 }
 
+async function seedStudentRosterIfEmpty() {
+  const existingCount = await prisma.studentRoster.count();
+  if (existingCount > 0) return;
+  await ensureStudentRoster();
+}
+
 async function importStudentRoster(buffer, filename, { mode }) {
   const rawRows = parseRosterBuffer(buffer, filename);
 
@@ -130,23 +136,6 @@ async function importStudentRoster(buffer, filename, { mode }) {
       return { rowNumber, systemId, error: "缺少必填字段（系统号、姓名、所在班级）" };
     }
 
-    if (seenIds.has(systemId)) {
-      const prev = seenIds.get(systemId);
-      prev.error = `文件内系统号重复（第 ${rowNumber} 行覆盖）`;
-      return {
-        rowNumber,
-        systemId,
-        data: {
-          systemId,
-          studentName,
-          className,
-          seatNumber: normalizeCell(row["座号"]) || null,
-          gender: normalizeCell(row["性别"]) || null,
-          idCardSuffix: normalizeIdCardSuffix(row["身份证号"]),
-        },
-      };
-    }
-
     const entry = {
       rowNumber,
       systemId,
@@ -160,6 +149,14 @@ async function importStudentRoster(buffer, filename, { mode }) {
         idCardSuffix: normalizeIdCardSuffix(row["身份证号"]),
       },
     };
+
+    if (seenIds.has(systemId)) {
+      const prev = seenIds.get(systemId);
+      prev.error = `文件内系统号重复（第 ${rowNumber} 行覆盖）`;
+      seenIds.set(systemId, entry);
+      return entry;
+    }
+
     seenIds.set(systemId, entry);
     return entry;
   });
@@ -203,6 +200,7 @@ async function importStudentRoster(buffer, filename, { mode }) {
 
 module.exports = {
   ensureStudentRoster,
+  seedStudentRosterIfEmpty,
   loadStudentRosterRows,
   normalizeIdCardSuffix,
   normalizeSystemId,

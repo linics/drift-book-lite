@@ -107,6 +107,38 @@ describe("student roster service", () => {
     expect(rows).toHaveLength(0);
   });
 
+  test("startup seed keeps admin-imported roster when table already has rows", async () => {
+    process.env.STUDENT_ROSTER_PATH = writeRoster([
+      {
+        系统号: "320250001",
+        姓名: "配置文件学生",
+        所在班级: "高一(01)班",
+      },
+    ]);
+
+    await prisma.studentRoster.create({
+      data: {
+        systemId: "320250999",
+        studentName: "后台导入学生",
+        className: "高一(09)班",
+      },
+    });
+
+    const { seedStudentRosterIfEmpty } = loadStudentRosterModule();
+    await seedStudentRosterIfEmpty();
+
+    const rows = await prisma.studentRoster.findMany({
+      orderBy: [{ systemId: "asc" }],
+    });
+    expect(rows).toEqual([
+      expect.objectContaining({
+        systemId: "320250999",
+        studentName: "后台导入学生",
+        className: "高一(09)班",
+      }),
+    ]);
+  });
+
   test("normalizeSystemId strips uppercase S prefix", () => {
     const { normalizeSystemId } = loadStudentRosterModule();
     expect(normalizeSystemId("S320250001")).toBe("320250001");
@@ -177,6 +209,31 @@ describe("student roster service", () => {
 
     const row = await prisma.studentRoster.findUnique({ where: { systemId: "320250001" } });
     expect(row).not.toBeNull();
+  });
+
+  test("importStudentRoster keeps the last duplicate systemId row as winner", async () => {
+    const { importStudentRoster } = loadStudentRosterModule();
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet([
+      { 系统号: "320250001", 姓名: "第一条", 所在班级: "高一(01)班" },
+      { 系统号: "320250001", 姓名: "第二条", 所在班级: "高一(02)班" },
+      { 系统号: "320250001", 姓名: "第三条", 所在班级: "高一(03)班" },
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, "Sheet1");
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    const result = await importStudentRoster(buffer, "test.xlsx", { mode: "create_only" });
+    expect(result.successRows).toBe(1);
+    expect(result.failedRows).toBe(2);
+    expect(result.failures.map((failure) => failure.rowNumber)).toEqual([2, 3]);
+
+    const row = await prisma.studentRoster.findUnique({ where: { systemId: "320250001" } });
+    expect(row).toEqual(
+      expect.objectContaining({
+        studentName: "第三条",
+        className: "高一(03)班",
+      })
+    );
   });
 
   test("removes roster rows that disappeared from the latest workbook", async () => {

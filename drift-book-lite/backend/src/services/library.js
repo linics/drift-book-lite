@@ -891,10 +891,25 @@ async function annotateReviews(reviews, options = {}) {
   return reviews;
 }
 
+function buildStudentSystemIdVariants(value) {
+  const raw = String(value || "").trim();
+  const normalized = normalizeSystemId(raw);
+  return [
+    raw,
+    normalized,
+    normalized ? `S${normalized}` : "",
+    normalized ? `s${normalized}` : "",
+  ].filter((item, index, items) => item && items.indexOf(item) === index);
+}
+
 async function resolveStudentIdentity({ systemId, studentName, idCardSuffix }) {
-  const roster = await prisma.studentRoster.findUnique({
-    where: { systemId: normalizeSystemId(String(systemId || "")) },
-  });
+  let roster = null;
+  for (const candidateSystemId of buildStudentSystemIdVariants(systemId)) {
+    roster = await prisma.studentRoster.findUnique({
+      where: { systemId: candidateSystemId },
+    });
+    if (roster) break;
+  }
 
   if (!roster || roster.studentName !== String(studentName || "").trim()) {
     throw new HttpError(400, "学生身份校验失败");
@@ -962,7 +977,7 @@ async function ensureNoDuplicateReview({ studentSystemId, teacherName, bookIds, 
   if (!studentSystemId && !teacherName) return;
 
   const identityWhere = studentSystemId
-    ? { studentSystemId }
+    ? { studentSystemId: { in: buildStudentSystemIdVariants(studentSystemId) } }
     : { identityType: "teacher", teacherName };
 
   const reviews = await prisma.bookReview.findMany({

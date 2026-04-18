@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const { prisma } = require("../lib/prisma");
 const { adminUsernames, adminPassword } = require("../lib/env");
 const { defaultProcessContent, syncDefaultSiteAssets } = require("./assets");
-const { ensureStudentRoster } = require("./studentRoster");
+const { seedStudentRosterIfEmpty } = require("./studentRoster");
 const { ensureTeacherRoster } = require("./teacherRoster");
 
 async function ensureAdminUsers() {
@@ -59,7 +59,7 @@ async function bootstrapSystem() {
     mode: "fill-missing",
     fillEmptyCarousel: siteAsset.created,
   });
-  await ensureStudentRoster();
+  await seedStudentRosterIfEmpty();
   await ensureTeacherRoster();
   await migrateLegacyReviews();
 }
