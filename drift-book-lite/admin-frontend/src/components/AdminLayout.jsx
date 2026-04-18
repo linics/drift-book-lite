@@ -5,6 +5,7 @@ import { useAdminSession } from "../lib/auth.js";
 export function AdminLayout({ title, description, onLogout, children }) {
   const links = [
     { to: "/books", label: "图书与导入" },
+    { to: "/student-roster", label: "学生花名册" },
     { to: "/reviews", label: "留言审核" },
     { to: "/featured", label: "精选运营" },
     { to: "/sensitive-words", label: "敏感词库" },

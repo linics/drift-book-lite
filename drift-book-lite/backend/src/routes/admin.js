@@ -35,6 +35,7 @@ const {
   deleteCarouselAsset,
 } = require("../services/assets");
 const { importDefaultSensitiveWords } = require("../services/defaultSensitiveWords");
+const { importStudentRoster } = require("../services/studentRoster");
 const { HttpError } = require("../utils/httpError");
 
 const router = express.Router();
@@ -203,6 +204,17 @@ router.get("/imports/:batchId", async (req, res) => {
 router.delete("/imports/:batchId", async (req, res) => {
   const result = await deleteImportBatch(req.params.batchId);
   res.json(result);
+});
+
+router.post("/student-roster/import", uploadMemory.single("file"), async (req, res) => {
+  if (!req.file) throw new HttpError(400, "缺少导入文件");
+  const { mode } = z.object({ mode: z.enum(["create_only", "upsert"]) }).parse(req.body);
+  const result = await importStudentRoster(
+    req.file.buffer,
+    decodeUploadFilename(req.file.originalname),
+    { mode }
+  );
+  res.status(200).json(result);
 });
 
 router.get("/reviews", async (req, res) => {

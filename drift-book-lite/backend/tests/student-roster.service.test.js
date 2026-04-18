@@ -107,6 +107,78 @@ describe("student roster service", () => {
     expect(rows).toHaveLength(0);
   });
 
+  test("normalizeSystemId strips uppercase S prefix", () => {
+    const { normalizeSystemId } = loadStudentRosterModule();
+    expect(normalizeSystemId("S320250001")).toBe("320250001");
+  });
+
+  test("normalizeSystemId strips lowercase s prefix", () => {
+    const { normalizeSystemId } = loadStudentRosterModule();
+    expect(normalizeSystemId("s320250001")).toBe("320250001");
+  });
+
+  test("normalizeSystemId passes through IDs without S prefix", () => {
+    const { normalizeSystemId } = loadStudentRosterModule();
+    expect(normalizeSystemId("320250001")).toBe("320250001");
+  });
+
+  test("importStudentRoster create_only rejects duplicate systemId", async () => {
+    await prisma.studentRoster.create({
+      data: { systemId: "320250001", studentName: "王一", className: "高一(01)班" },
+    });
+
+    const { importStudentRoster } = loadStudentRosterModule();
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet([
+      { 系统号: "320250001", 姓名: "王一", 所在班级: "高一(01)班" },
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, "Sheet1");
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    const result = await importStudentRoster(buffer, "test.xlsx", { mode: "create_only" });
+    expect(result.successRows).toBe(0);
+    expect(result.failedRows).toBe(1);
+    expect(result.failures[0].message).toBe("系统号已存在");
+  });
+
+  test("importStudentRoster upsert updates existing record", async () => {
+    await prisma.studentRoster.create({
+      data: { systemId: "320250001", studentName: "旧名字", className: "旧班级" },
+    });
+
+    const { importStudentRoster } = loadStudentRosterModule();
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet([
+      { 系统号: "320250001", 姓名: "新名字", 所在班级: "新班级" },
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, "Sheet1");
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    const result = await importStudentRoster(buffer, "test.xlsx", { mode: "upsert" });
+    expect(result.successRows).toBe(1);
+    expect(result.failedRows).toBe(0);
+
+    const updated = await prisma.studentRoster.findUnique({ where: { systemId: "320250001" } });
+    expect(updated.studentName).toBe("新名字");
+    expect(updated.className).toBe("新班级");
+  });
+
+  test("importStudentRoster normalizes S-prefix systemId on import", async () => {
+    const { importStudentRoster } = loadStudentRosterModule();
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet([
+      { 系统号: "S320250001", 姓名: "王一", 所在班级: "高一(01)班" },
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, "Sheet1");
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    const result = await importStudentRoster(buffer, "test.xlsx", { mode: "create_only" });
+    expect(result.successRows).toBe(1);
+
+    const row = await prisma.studentRoster.findUnique({ where: { systemId: "320250001" } });
+    expect(row).not.toBeNull();
+  });
+
   test("removes roster rows that disappeared from the latest workbook", async () => {
     process.env.STUDENT_ROSTER_PATH = writeRoster([
       {

@@ -7,6 +7,7 @@ const { HttpError } = require("../utils/httpError");
 const {
   buildStudentDisplayName,
   normalizeIdCardSuffix,
+  normalizeSystemId,
   parseStudentCohort,
 } = require("./studentRoster");
 const { normalizeTeacherName } = require("./teacherRoster");
@@ -892,7 +893,7 @@ async function annotateReviews(reviews, options = {}) {
 
 async function resolveStudentIdentity({ systemId, studentName, idCardSuffix }) {
   const roster = await prisma.studentRoster.findUnique({
-    where: { systemId: String(systemId || "").trim() },
+    where: { systemId: normalizeSystemId(String(systemId || "")) },
   });
 
   if (!roster || roster.studentName !== String(studentName || "").trim()) {
