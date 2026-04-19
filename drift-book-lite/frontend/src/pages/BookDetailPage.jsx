@@ -24,11 +24,9 @@ export function BookDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState("");
   const [formState, setFormState] = useState({
-    identityType: "student",
     systemId: "",
-    studentName: "",
+    name: "",
     idCardSuffix: "",
-    teacherName: "",
     content: "",
   });
 
@@ -82,30 +80,29 @@ export function BookDetailPage() {
     setSuccess("");
 
     try {
+      const hasSystemId = formState.systemId.trim().length > 0;
       const payload =
-        formState.identityType === "teacher"
+        hasSystemId
           ? {
-              identityType: "teacher",
-              teacherName: formState.teacherName,
+              identityType: "student",
+              systemId: formState.systemId,
+              studentName: formState.name,
+              idCardSuffix: formState.idCardSuffix,
               content: formState.content,
             }
           : {
-              identityType: "student",
-              systemId: formState.systemId,
-              studentName: formState.studentName,
-              idCardSuffix: formState.idCardSuffix,
+              identityType: "teacher",
+              teacherName: formState.name,
               content: formState.content,
             };
       const response = await api.post(`/books/${bookId}/reviews`, payload);
       setSuccess(response.data.message);
-      setFormState((current) => ({
-        identityType: current.identityType,
+      setFormState({
         systemId: "",
-        studentName: "",
+        name: "",
         idCardSuffix: "",
-        teacherName: "",
         content: "",
-      }));
+      });
       await loadData();
     } catch (requestError) {
       setError(requestError.response?.data?.message || "留言提交失败");
@@ -225,75 +222,30 @@ export function BookDetailPage() {
             </div>
 
             <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-              <div className="flex flex-wrap gap-3 rounded-[1.6rem] border border-stone-200 bg-white/60 p-2">
-                {["student", "teacher"].map((identityType) => {
-                  const active = formState.identityType === identityType;
-                  const label = identityType === "student" ? "学生" : "教师";
-                  return (
-                    <button
-                      key={identityType}
-                      type="button"
-                      className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-                        active
-                          ? "bg-primary text-white shadow-[0_4px_14px_rgba(139,47,42,0.22)]"
-                          : "bg-white text-stone-600 hover:text-stone-900"
-                      }`}
-                      onClick={() =>
-                        setFormState((s) => ({
-                          ...s,
-                          identityType,
-                          systemId: "",
-                          studentName: "",
-                          idCardSuffix: "",
-                          teacherName: "",
-                        }))
-                      }
-                      disabled={submitting}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              {formState.identityType === "teacher" ? (
-                <Field label="教师姓名">
-                  <TextInput
-                    value={formState.teacherName}
-                    onChange={(e) => setFormState((s) => ({ ...s, teacherName: e.target.value }))}
-                    disabled={submitting}
-                    placeholder="请输入教师姓名"
-                  />
-                </Field>
-              ) : (
-                <>
-                  <Field label="学号">
-                    <TextInput
-                      value={formState.systemId}
-                      onChange={(e) => setFormState((s) => ({ ...s, systemId: e.target.value }))}
-                      disabled={submitting}
-                      placeholder="例如 320250002"
-                    />
-                  </Field>
-                  <Field label="姓名">
-                    <TextInput
-                      value={formState.studentName}
-                      onChange={(e) => setFormState((s) => ({ ...s, studentName: e.target.value }))}
-                      disabled={submitting}
-                      placeholder="请输入学籍姓名"
-                    />
-                  </Field>
-                  <Field label="身份证后四位" hint="可用于身份校验，可留空。">
-                    <TextInput
-                      value={formState.idCardSuffix}
-                      onChange={(e) =>
-                        setFormState((s) => ({ ...s, idCardSuffix: e.target.value.toUpperCase() }))
-                      }
-                      disabled={submitting}
-                      placeholder="可留空"
-                    />
-                  </Field>
-                </>
-              )}
+              <Field label="姓名">
+                <TextInput
+                  value={formState.name}
+                  onChange={(e) => setFormState((s) => ({ ...s, name: e.target.value }))}
+                  disabled={submitting}
+                />
+              </Field>
+              <Field label="学号">
+                <TextInput
+                  value={formState.systemId}
+                  onChange={(e) => setFormState((s) => ({ ...s, systemId: e.target.value }))}
+                  disabled={submitting}
+                  placeholder="如：320250001"
+                />
+              </Field>
+              <Field label="身份证后四位">
+                <TextInput
+                  value={formState.idCardSuffix}
+                  onChange={(e) =>
+                    setFormState((s) => ({ ...s, idCardSuffix: e.target.value.toUpperCase() }))
+                  }
+                  disabled={submitting}
+                />
+              </Field>
               <Field label="留言内容" hint="最多 500 字。">
                 <TextArea
                   rows={5}
@@ -316,7 +268,7 @@ export function BookDetailPage() {
               ) : null}
 
               <PrimaryButton type="submit" disabled={submitting} className="w-full sm:w-auto">
-                {submitting ? "正在提交" : "提交并进入审核"}
+                {submitting ? "正在提交" : "提交"}
               </PrimaryButton>
             </form>
           </div>

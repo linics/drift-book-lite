@@ -68,7 +68,9 @@ Important backend variables:
 | `ADMIN_APP_BASE_URL` | Admin frontend origin for CORS | `http://localhost:5175` |
 | `DEFAULT_SITE_ASSETS_DIR` | Default logo/carousel source directory | `drift-book-lite/resources/default-site-assets` |
 | `DEFAULT_SENSITIVE_WORDS_DIR` | Default sensitive word source directory | `drift-book-lite/resources/default-sensitive-words` |
-| `STUDENT_ROSTER_PATH` | Deployment-specific student roster | repo-root `2025学年学生信息.xls` fallback |
+| `DEFAULT_BOOK_CATALOG_PATH` | Default 7th-floor book catalog | `drift-book-lite/resources/default-book-catalog/图书馆7楼流通室数据.xlsx` |
+| `DEFAULT_STUDENT_ROSTER_PATH` | Optional local default student roster source | `drift-book-lite/resources/default-student-roster/2025学年学生信息.xls` |
+| `STUDENT_ROSTER_PATH` | Optional deployment-specific student roster override | takes priority over `DEFAULT_STUDENT_ROSTER_PATH` |
 | `TEACHER_ROSTER_PATH` | Cleaned teacher roster source | `drift-book-lite/resources/default-teacher-roster/2025-teachers.txt` |
 | `UPLOADS_DIR` | Runtime upload copies | `drift-book-lite/uploads` |
 
@@ -103,7 +105,7 @@ cd drift-book-lite/admin-frontend
 npm run dev
 ```
 
-Windows no-Docker helpers live in `scripts/windows/`. The generated backend `.env` should include the default assets, sensitive words, teacher roster, student roster, and uploads paths.
+Windows no-Docker helpers live in `scripts/windows/`. The generated backend `.env` should include the default book catalog, default assets, sensitive words, teacher roster, student roster, and uploads paths.
 
 ## Database
 
@@ -163,6 +165,8 @@ Deployment/config changes should keep `drift-book-lite/backend/tests/deployment-
     ├── frontend/
     ├── admin-frontend/
     └── resources/
+        ├── default-book-catalog/
+        ├── default-student-roster/  # local roster files are gitignored
         ├── default-site-assets/
         ├── default-sensitive-words/
         └── default-teacher-roster/
@@ -171,10 +175,11 @@ Deployment/config changes should keep `drift-book-lite/backend/tests/deployment-
 ## Data And Resource Rules
 
 - `data/` is local-only and gitignored. Do not rely on it in application runtime code.
+- The default 7th-floor book catalog is committed under `drift-book-lite/resources/default-book-catalog/图书馆7楼流通室数据.xlsx`.
+- Student roster files are deployment data and must not be committed. A local default can be placed at `drift-book-lite/resources/default-student-roster/2025学年学生信息.xls`; `STUDENT_ROSTER_PATH` may override it in deployments.
 - Default site images are committed under `drift-book-lite/resources/default-site-assets`.
 - Default sensitive word files are committed under `drift-book-lite/resources/default-sensitive-words`.
 - The cleaned teacher roster is committed under `drift-book-lite/resources/default-teacher-roster/2025-teachers.txt`.
-- The student roster is deployment data. It should be provided via `STUDENT_ROSTER_PATH`, commonly repo-root `2025学年学生信息.xls` or `package-data/student-roster.xls`.
 - Uploaded runtime copies live under `UPLOADS_DIR`; do not delete them unless no configuration references them.
 
 ## Current Functional Notes

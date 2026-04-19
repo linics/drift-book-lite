@@ -43,11 +43,11 @@ if errorlevel 1 exit /b 1
 set "ROSTER_REL=package-data\student-roster.xls"
 if not exist "%ROSTER_REL%" if exist "2025学年学生信息.xls" set "ROSTER_REL=2025学年学生信息.xls"
 if not exist "%ROSTER_REL%" (
-  echo WARNING: 2025 student roster file was not found at project root.
-  echo Expected package-data\student-roster.xls or 2025 student roster xls at project root.
-  echo The backend can still start, but roster import will be skipped.
+  echo WARNING: Student roster file was not found.
+  echo Expected package-data\student-roster.xls, project-root 2025 student roster xls, or a local default roster file.
+  echo The backend can still start, but roster import will be skipped until the file is provided.
   echo.
-  set "ROSTER_REL=2025学年学生信息.xls"
+  set "ROSTER_REL=drift-book-lite\resources\default-student-roster\2025学年学生信息.xls"
 )
 
 call :write_env
@@ -184,6 +184,8 @@ set "JWT_SECRET=drift-local-!RANDOM!-!RANDOM!-!RANDOM!-!RANDOM!-!RANDOM!"
   echo ADMIN_APP_BASE_URL="http://!LAN_HOST!:5175"
   echo DEFAULT_SITE_ASSETS_DIR="!ROOT_SLASH!/drift-book-lite/resources/default-site-assets"
   echo DEFAULT_SENSITIVE_WORDS_DIR="!ROOT_SLASH!/drift-book-lite/resources/default-sensitive-words"
+  echo DEFAULT_BOOK_CATALOG_PATH="!ROOT_SLASH!/drift-book-lite/resources/default-book-catalog/图书馆7楼流通室数据.xlsx"
+  echo DEFAULT_STUDENT_ROSTER_PATH="!ROOT_SLASH!/drift-book-lite/resources/default-student-roster/2025学年学生信息.xls"
   echo TEACHER_ROSTER_PATH="!ROOT_SLASH!/drift-book-lite/resources/default-teacher-roster/2025-teachers.txt"
   set "ROSTER_SLASH=!ROSTER_REL:\=/!"
   echo STUDENT_ROSTER_PATH="!ROOT_SLASH!/!ROSTER_SLASH!"

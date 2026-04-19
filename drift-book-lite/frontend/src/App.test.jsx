@@ -151,21 +151,18 @@ describe("HomePage", () => {
     expect(within(sharedGrid).getByTestId("featured-ranking-heading")).toBeInTheDocument();
   });
 
-  test("restores the previous homepage copy while keeping 5-item previews", async () => {
+  test("shows shortened homepage copy while keeping 5-item previews", async () => {
     render(<App />);
 
     const hero = await screen.findByTestId("homepage-hero");
     expect(
-      within(hero).getByText(/在"一本书的漂流"里，寻找一本书，留下你的那一层，看见阅读真正流动起来。/)
+      within(hero).getByText(/在图书馆里找到一本书，留下你的留言，看见阅读流动起来。/)
     ).toBeInTheDocument();
-    expect(within(hero).getByText(/从一次搜索开始，找到那本正在流动的书。/)).toBeInTheDocument();
     expect(
-      screen.getByText(/图书馆是我们阅读漂流的共同起点。从这里出发，留下属于你的那一层阅读印记。/)
+      screen.getByText(/从这里出发，留下属于你的那一层。/)
     ).toBeInTheDocument();
-    expect(screen.getByText(/找一本正在流动的书，接上属于你的那一层。/)).toBeInTheDocument();
-    expect(screen.getByText(/先读几段有代表性的接龙片段，再决定从哪本书进入。/)).toBeInTheDocument();
     expect(
-      screen.getByText(/阅读从来不是一件孤独的事。找到一本书，留下你的声音，让它继续流向下一位读者。/)
+      screen.getByText(/找到一本书，留下你的留言，让阅读继续流动。/)
     ).toBeInTheDocument();
   });
 
@@ -191,9 +188,7 @@ describe("HomePage", () => {
     render(<App />);
 
     const rankings = await screen.findByTestId("homepage-rankings");
-    expect(
-      within(rankings).getByText(/还没有公开接龙/)
-    ).toBeInTheDocument();
+    expect(within(rankings).getByText(/还没有留言，欢迎成为第一位。/)).toBeInTheDocument();
   });
 });
 
@@ -304,10 +299,10 @@ describe("BookDetailPage", () => {
 
     render(<App />);
 
-    expect(await screen.findByText(/还没有公开接龙/)).toBeInTheDocument();
+    expect(await screen.findByText(/还没有留言，欢迎你成为第一位。/)).toBeInTheDocument();
   });
 
-  test("submit review form allows omitting id card suffix", async () => {
+  test("submit review form uses student identity when system id is filled", async () => {
     mockPost.mockResolvedValue({ data: { message: "留言已提交，等待审核。" } });
 
     render(<App />);
@@ -316,16 +311,21 @@ describe("BookDetailPage", () => {
     await screen.findByText("漂流书目");
 
     const user = userEvent.setup();
-    await user.type(screen.getByPlaceholderText("例如 320250002"), "320250001");
-    await user.type(screen.getByPlaceholderText("请输入学籍姓名"), "王小明");
-    await user.type(screen.getByPlaceholderText("写下你想接上的这一层内容。"), "测试接龙内容");
+    expect(screen.queryByRole("button", { name: "学生" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "教师" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("学号")).toHaveAttribute("placeholder", "如：320250001");
 
-    await user.click(screen.getByRole("button", { name: "提交并进入审核" }));
+    await user.type(screen.getByLabelText("姓名"), "王小明");
+    await user.type(screen.getByLabelText("学号"), "320250001");
+    await user.type(screen.getByLabelText(/留言内容/), "测试接龙内容");
+
+    await user.click(screen.getByRole("button", { name: "提交" }));
 
     expect(await screen.findByText("留言已提交，等待审核。")).toBeInTheDocument();
     expect(mockPost).toHaveBeenCalledWith(
       "/books/bk1/reviews",
       expect.objectContaining({
+        identityType: "student",
         systemId: "320250001",
         studentName: "王小明",
         idCardSuffix: "",
@@ -333,7 +333,7 @@ describe("BookDetailPage", () => {
     );
   });
 
-  test("submit review form supports teacher identity", async () => {
+  test("submit review form uses teacher identity when system id is blank", async () => {
     mockPost.mockResolvedValue({ data: { message: "留言已提交，等待审核。" } });
 
     render(<App />);
@@ -341,13 +341,15 @@ describe("BookDetailPage", () => {
     await screen.findByText("漂流书目");
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "教师" }));
-    expect(screen.queryByPlaceholderText("例如 320250002")).not.toBeInTheDocument();
 
-    await user.type(screen.getByPlaceholderText("请输入教师姓名"), "马伟");
-    await user.type(screen.getByPlaceholderText("写下你想接上的这一层内容。"), "教师接龙内容");
+    expect(screen.queryByRole("button", { name: "学生" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "教师" })).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("可留空")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "提交并进入审核" }));
+    await user.type(screen.getByLabelText("姓名"), "马伟");
+    await user.type(screen.getByLabelText(/留言内容/), "教师接龙内容");
+
+    await user.click(screen.getByRole("button", { name: "提交" }));
 
     expect(await screen.findByText("留言已提交，等待审核。")).toBeInTheDocument();
     expect(mockPost).toHaveBeenCalledWith(

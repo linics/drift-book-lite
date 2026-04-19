@@ -20,6 +20,8 @@ describe("deployment configuration", () => {
 
     expect(backendEnv).toContain('APP_BASE_URL="http://localhost:5174"');
     expect(backendEnv).toContain('ADMIN_APP_BASE_URL="http://localhost:5175"');
+    expect(backendEnv).toContain('DEFAULT_BOOK_CATALOG_PATH=""');
+    expect(backendEnv).toContain('DEFAULT_STUDENT_ROSTER_PATH=""');
     expect(backendEnv).toContain('TEACHER_ROSTER_PATH=""');
     expect(backendEnv).not.toContain("ALLOWED_ORIGINS=");
   });

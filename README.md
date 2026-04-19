@@ -61,6 +61,8 @@
 │   ├── admin-frontend/   # 管理端 React + Vite
 │   ├── backend/          # Express + Prisma + SQLite
 │   └── resources/
+│       ├── default-book-catalog/     # 默认 7 楼图书目录
+│       ├── default-student-roster/   # 本地学生名册放置目录（文件不提交）
 │       ├── default-site-assets/      # 默认首页图片（Logo、轮播图）
 │       ├── default-sensitive-words/  # 默认敏感词快照
 │       └── default-teacher-roster/   # 清理后的教师名册
@@ -81,11 +83,12 @@
 ### 管理端
 
 - 管理员账号登录
-- 导入 CSV 或 XLSX 图书目录
+- 导入 CSV 或 XLSX 图书目录，或使用内置 7 楼默认目录
+- 导入学生花名册，或使用内置默认名册
 - 查看导入批次、失败行和导入统计
 - 修改图书信息
 - 审核、隐藏、驳回评语
-- 维护敏感词库并导入内置默认词条
+- 导入内置默认敏感词词条
 - 上传 Logo、轮播图
 - 重新载入默认首页图片
 
@@ -95,7 +98,7 @@
 - 提供受保护的管理接口 `/api/admin/*`
 - 使用 Prisma 操作 SQLite
 - 对外提供 `/uploads` 静态资源
-- 首次启动自动初始化管理员账号和站点配置
+- 首次启动自动初始化管理员账号、站点配置和空库默认资源
 
 ## Windows 一键部署
 
@@ -171,7 +174,9 @@
 | `ADMIN_APP_BASE_URL` | 管理端地址（CORS 来源） | `http://<LAN_IP>:5175` |
 | `DEFAULT_SITE_ASSETS_DIR` | 默认首页图片目录路径 | 部署时自动填入绝对路径 |
 | `DEFAULT_SENSITIVE_WORDS_DIR` | 默认敏感词目录路径 | 部署时自动填入绝对路径 |
-| `STUDENT_ROSTER_PATH` | 学生名册路径 | 部署时自动填入 |
+| `DEFAULT_BOOK_CATALOG_PATH` | 默认 7 楼图书目录路径 | 部署时自动填入绝对路径 |
+| `DEFAULT_STUDENT_ROSTER_PATH` | 默认学生名册路径 | 可选；部署时可填入本机绝对路径 |
+| `STUDENT_ROSTER_PATH` | 学生名册覆盖路径 | 可选，优先级高于默认学生名册 |
 | `TEACHER_ROSTER_PATH` | 教师名册路径 | 部署时自动填入 |
 | `UPLOADS_DIR` | 上传文件目录路径 | 部署时自动填入绝对路径 |
 
@@ -189,10 +194,19 @@
 - `create_only`：只新增，不覆盖已有图书
 - `upsert`：已存在则更新
 
-样例文件随本地工作目录附带，**不随代码提交**（`data/` 已被 gitignore）。全新克隆仓库后不包含这些文件；如需样例数据，请联系项目负责人获取或使用本地打包包中的副本：
+默认 7 楼图书目录已固化在：
 
-- `data/图书信息.csv`（本地 `data/` 目录，仅本地存在）
-- `data/图书馆7楼流通室数据.xlsx`（本地 `data/` 目录，仅本地存在）
+- `drift-book-lite/resources/default-book-catalog/图书馆7楼流通室数据.xlsx`
+
+系统启动时若 `Book` 表为空，会自动导入该目录并生成导入批次。管理端"图书与导入"页也可手动执行"导入默认目录"。
+`data/` 仍可作为本地临时目录，但不再作为部署默认图书素材来源。
+
+### 学生名册
+
+- 学生名册属于部署数据，不随代码提交
+- 可把本机名册放在 `drift-book-lite/resources/default-student-roster/2025学年学生信息.xls`，或通过 `STUDENT_ROSTER_PATH` 指定其他路径
+- 系统启动时若 `StudentRoster` 表为空且配置路径存在，会自动导入该文件
+- 管理端"学生花名册"页可在默认路径存在时手动执行"导入默认名册"
 
 ### 站点素材
 
@@ -208,6 +222,7 @@
 - 当前默认快照采用中度扩容范围，共 7 类：广告、色情、涉枪涉爆、非法网址、暴恐、补充、贪腐
 - 后端会读取该目录下所有 `.txt` 文件；导入时执行 `NFKC + trim + lowercase` 归一化并按归一化结果去重
 - 管理端"敏感词库"页可调用"导入内置词库"把默认词条写入数据库
+- 系统启动时若 `SensitiveWord` 表为空，会自动导入默认词库；已有词库不会被重启覆盖
 - 上游来源与快照说明见 [SOURCES.md](drift-book-lite/resources/default-sensitive-words/SOURCES.md)
 
 ## 主要接口
@@ -224,14 +239,18 @@
 ### 管理接口
 
 - `POST /api/admin/login`
+- `GET /api/admin/default-resources`
 - `GET /api/admin/books`
 - `GET /api/admin/sensitive-words`
 - `POST /api/admin/sensitive-words/import-defaults`
 - `PATCH /api/admin/books/:bookId`
 - `POST /api/admin/imports`
+- `POST /api/admin/imports/default-catalog`
 - `GET /api/admin/imports`
 - `GET /api/admin/imports/:batchId`
 - `DELETE /api/admin/imports/:batchId`
+- `POST /api/admin/student-roster/import`
+- `POST /api/admin/student-roster/import-default`
 - `GET /api/admin/reviews`
 - `PATCH /api/admin/reviews/:reviewId`
 - `GET /api/admin/assets`

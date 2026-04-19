@@ -4,6 +4,10 @@ const { adminUsernames, adminPassword } = require("../lib/env");
 const { defaultProcessContent, syncDefaultSiteAssets } = require("./assets");
 const { seedStudentRosterIfEmpty } = require("./studentRoster");
 const { ensureTeacherRoster } = require("./teacherRoster");
+const {
+  seedDefaultBookCatalogIfEmpty,
+  seedDefaultSensitiveWordsIfEmpty,
+} = require("./defaultResources");
 
 async function ensureAdminUsers() {
   const passwordHash = await bcrypt.hash(adminPassword, 10);
@@ -59,7 +63,9 @@ async function bootstrapSystem() {
     mode: "fill-missing",
     fillEmptyCarousel: siteAsset.created,
   });
+  await seedDefaultSensitiveWordsIfEmpty();
   await seedStudentRosterIfEmpty();
+  await seedDefaultBookCatalogIfEmpty();
   await ensureTeacherRoster();
   await migrateLegacyReviews();
 }

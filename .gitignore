@@ -25,6 +25,8 @@ drift-book-lite/frontend/dist/
 drift-book-lite/admin-frontend/node_modules/
 drift-book-lite/admin-frontend/dist/
 drift-book-lite/uploads/
+drift-book-lite/resources/default-student-roster/*.xls
+drift-book-lite/resources/default-student-roster/*.xlsx
 
 package-data/
 data/

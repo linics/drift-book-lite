@@ -19,6 +19,9 @@ export function AdminLayout({ title, description, onLogout, children }) {
         <aside className="rounded-[2.4rem] bg-[linear-gradient(180deg,#16110d,#231813_68%,#100d0a)] p-6 text-white shadow-[0_24px_90px_rgba(24,18,9,0.35)]">
           <p className="text-xs uppercase tracking-[0.34em] text-stone-400">Admin Console</p>
           <h1 className="mt-4 font-display text-4xl text-[#f5ead9]">一本书的漂流</h1>
+          <p className="mt-3 text-sm leading-7 text-stone-300">
+            图书、留言和首页素材都在这里维护。
+          </p>
           <nav className="mt-8 space-y-2">
             {links.map((link) => (
               <NavLink
