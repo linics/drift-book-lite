@@ -3,14 +3,23 @@ import { api, authHeaders, requestMessage, isUnauthorized, assetUrl } from "../l
 import { Badge } from "../components/Badge.jsx";
 import { Field } from "../components/Field.jsx";
 import { TextInput } from "../components/Input.jsx";
-import { PrimaryButton, SecondaryButton } from "../components/Button.jsx";
+import { SecondaryButton } from "../components/Button.jsx";
 import { StatusMessage } from "../components/StatusMessage.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
 import { AdminLayout } from "../components/AdminLayout.jsx";
+import {
+  AdminDefaultResourceSection,
+  AdminList,
+  AdminListItem,
+  AdminMeta,
+  AdminSection,
+  AdminToolbar,
+} from "../components/AdminUI.jsx";
 
 export function AssetsPage({ token, onLogout }) {
   const carouselInputRef = useRef(null);
   const [assets, setAssets] = useState(null);
+  const [defaultResources, setDefaultResources] = useState(null);
   const [newCarouselLabel, setNewCarouselLabel] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -20,16 +29,28 @@ export function AssetsPage({ token, onLogout }) {
 
   async function loadAssets() {
     try {
-      const response = await api.get("/admin/assets", {
+      const assetsResponse = await api.get("/admin/assets", {
         headers: authHeaders(token),
       });
-      setAssets(response.data);
+      setAssets(assetsResponse.data);
     } catch (requestError) {
       if (isUnauthorized(requestError)) {
         onLogout();
         return;
       }
       setError(requestMessage(requestError, "素材加载失败"));
+      return;
+    }
+
+    try {
+      const defaultResourcesResponse = await api.get("/admin/default-resources", {
+        headers: authHeaders(token),
+      });
+      setDefaultResources(defaultResourcesResponse.data.resources);
+    } catch (requestError) {
+      if (isUnauthorized(requestError)) {
+        onLogout();
+      }
     }
   }
 
@@ -119,63 +140,39 @@ export function AssetsPage({ token, onLogout }) {
   }
 
   return (
-    <AdminLayout
-      onLogout={onLogout}
-      title="站点素材"
-      description="管理首页 Logo 和轮播图。"
-    >
+    <AdminLayout onLogout={onLogout} title="站点素材">
       <StatusMessage error={error} success={success} />
       {!assets ? (
-        <div className="paper-panel rounded-[2.4rem] p-8 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+        <div className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
           正在加载素材...
         </div>
       ) : (
         <div className="space-y-6">
-          <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-3xl">
-                <p className="text-xs uppercase tracking-[0.34em] text-primary">Default Assets</p>
-                <h3 className="mt-2 font-display text-3xl text-stone-900">默认首页图片</h3>
-                <p className="mt-3 text-sm leading-7 text-stone-600">
-                  重新载入默认目录中的首页图片。
-                </p>
-              </div>
-              <PrimaryButton
-                type="button"
-                className="min-w-44"
-                disabled={defaultAssetReloading}
-                onClick={handleReloadDefaultAssets}
-              >
-                {defaultAssetReloading ? "正在重载" : "重新载入默认素材"}
-              </PrimaryButton>
-            </div>
-            <div className="mt-6 rounded-[1.8rem] border border-stone-200 bg-white/85 p-5">
-              <p className="text-xs uppercase tracking-[0.28em] text-stone-500">当前默认目录</p>
-              <p className="mt-3 break-all rounded-2xl bg-surface px-4 py-3 font-mono text-xs text-stone-700">
-                {assets.defaultSiteAssetsDir || "未配置"}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-stone-500">
-                识别规则：`logo.*` 作为学校 Logo，`carousel-01.*`、`carousel-02.*` 等按顺序作为首页轮播图。
-              </p>
-            </div>
-          </section>
+          <AdminDefaultResourceSection
+            title="默认首页图片"
+            description="使用部署内置的首页 Logo 和轮播图。"
+            pathLabel="当前默认目录"
+            pathValue={defaultResources?.siteAssets?.path || assets.defaultSiteAssetsDir}
+            fallbackValue="未配置"
+            actionLabel="重新载入默认素材"
+            loadingLabel="正在重载"
+            loading={defaultAssetReloading}
+            onAction={handleReloadDefaultAssets}
+          >
+            <p className="mt-2 text-xs leading-5 text-stone-500">
+              识别规则：`logo.*` 作为学校 Logo，`carousel-01.*`、`carousel-02.*` 等按顺序作为首页轮播图。
+            </p>
+          </AdminDefaultResourceSection>
 
-          <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-primary">Carousel</p>
-                <h3 className="mt-2 font-display text-3xl text-stone-900">校园轮播图</h3>
-                <p className="mt-3 text-sm leading-7 text-stone-600">
-                  这里追加的是当前生效中的轮播图。
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 md:flex-row md:items-end">
+          <AdminSection title="校园轮播图">
+            <AdminToolbar>
+              <span className="hidden sm:block" />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <Field label="新轮播标题">
                   <TextInput
                     value={newCarouselLabel}
                     onChange={(event) => setNewCarouselLabel(event.target.value)}
-                    placeholder="可留空，系统自动命名"
-                    className="md:w-64"
+                    className="sm:w-64"
                   />
                 </Field>
                 <input
@@ -187,52 +184,54 @@ export function AssetsPage({ token, onLogout }) {
                 />
                 <SecondaryButton
                   type="button"
-                  className="h-12"
+                  className="shrink-0"
                   disabled={carouselUploading}
                   onClick={() => carouselInputRef.current?.click()}
                 >
                   {carouselUploading ? "正在上传" : "新增轮播图"}
                 </SecondaryButton>
               </div>
-            </div>
+            </AdminToolbar>
 
             <div className="mt-6 space-y-4">
               {assets.carouselImages.length === 0 ? (
                 <EmptyState>尚无轮播图，上传后即可显示。</EmptyState>
               ) : (
-                assets.carouselImages.map((image, index) => (
-                  <div
-                    key={image.id}
-                    className="grid gap-4 rounded-[1.8rem] border border-stone-200 bg-white/85 p-5 lg:grid-cols-[180px_1fr]"
-                  >
-                    <img
-                      src={assetUrl(image.path)}
-                      alt={image.label}
-                      className="h-32 w-full rounded-[1.4rem] object-cover"
-                    />
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Badge tone="muted">顺序 {index + 1}</Badge>
-                        {image.enabled === false ? <Badge tone="warning">未启用</Badge> : null}
-                      </div>
-                      <p className="text-sm font-semibold text-stone-900">{image.label}</p>
-                      <p className="text-xs text-stone-500">{image.path}</p>
-                      <div>
+                <AdminList>
+                  {assets.carouselImages.map((image, index) => (
+                    <AdminListItem
+                      key={image.id}
+                      className="grid gap-4 lg:grid-cols-[160px_1fr]"
+                    >
+                      <img
+                        src={assetUrl(image.path)}
+                        alt={image.label}
+                        className="h-28 w-full rounded-[1.4rem] object-cover"
+                      />
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone="muted">顺序 {index + 1}</Badge>
+                          {image.enabled === false ? <Badge tone="warning">未启用</Badge> : null}
+                        </div>
+                        <p className="text-sm font-semibold text-stone-900">{image.label}</p>
+                        <AdminMeta>
+                          <span>{image.path}</span>
+                        </AdminMeta>
                         <SecondaryButton
                           type="button"
-                          className="px-4 py-2 text-xs text-red-700"
+                          className="px-3 py-1.5 text-xs text-red-700"
                           disabled={deletingCarouselId === image.id}
                           onClick={() => handleDeleteCarousel(image)}
                         >
                           {deletingCarouselId === image.id ? "正在删除" : "删除轮播图"}
                         </SecondaryButton>
                       </div>
-                    </div>
-                  </div>
-                ))
+                    </AdminListItem>
+                  ))}
+                </AdminList>
               )}
             </div>
-          </section>
+          </AdminSection>
         </div>
       )}
     </AdminLayout>

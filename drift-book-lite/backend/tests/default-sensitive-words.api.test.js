@@ -147,14 +147,14 @@ describe("default sensitive words import", () => {
       writeFixtureFile(defaultSensitiveWordsDir, "04-非法网址.txt", "机场推荐\n翻墙\n");
       writeFixtureFile(defaultSensitiveWordsDir, "README.md", "# ignored\n");
 
+      await prisma.sensitiveWord.create({
+        data: {
+          word: "私聊",
+          normalizedWord: "私聊",
+        },
+      });
       const app = await createAppWithDefaultSensitiveWordsDir(defaultSensitiveWordsDir);
       const adminToken = await loginAs(app);
-
-      const customWordResponse = await request(app)
-        .post("/api/admin/sensitive-words")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({ word: "私聊" });
-      expect(customWordResponse.status).toBe(201);
 
       const importResponse = await request(app)
         .post("/api/admin/sensitive-words/import-defaults")

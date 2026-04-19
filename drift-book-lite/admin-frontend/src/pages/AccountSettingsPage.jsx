@@ -6,6 +6,7 @@ import { Field } from "../components/Field.jsx";
 import { TextInput } from "../components/Input.jsx";
 import { StatusMessage } from "../components/StatusMessage.jsx";
 import { api, authHeaders, requestMessage } from "../lib/api.js";
+import { AdminSection } from "../components/AdminUI.jsx";
 
 const initialFormState = {
   currentPassword: "",
@@ -66,10 +67,9 @@ export function AccountSettingsPage({ token, onLogout }) {
   return (
     <AdminLayout
       title="账号设置"
-      description="更新当前管理员账号的登录密码。修改成功后，所有旧登录状态会立即失效。"
       onLogout={onLogout}
     >
-      <section className="paper-panel max-w-2xl rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+      <AdminSection title="更新密码" className="max-w-2xl">
         <form className="space-y-5" onSubmit={handleSubmit}>
           <Field label="当前密码">
             <TextInput
@@ -103,7 +103,7 @@ export function AccountSettingsPage({ token, onLogout }) {
             {loading ? "正在更新" : "更新密码"}
           </PrimaryButton>
         </form>
-      </section>
+      </AdminSection>
     </AdminLayout>
   );
 }

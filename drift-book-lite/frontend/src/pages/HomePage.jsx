@@ -58,7 +58,7 @@ export function HomePage() {
   if (!assets || !homepage) {
     return (
       <PublicShell assets={assets}>
-        <LoadingPane label="正在装载活动主页" />
+        <LoadingPane label="正在加载" />
       </PublicShell>
     );
   }
@@ -84,7 +84,7 @@ export function HomePage() {
                 <span className="text-primary"> 继续流向下一位读者。</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-8 text-stone-600 md:text-lg">
-                在"一本书的漂流"里，寻找一本书，留下你的那一层，看见阅读真正流动起来。
+                在图书馆里找到一本书，留下你的留言，看见阅读流动起来。
               </p>
 
               <SearchForm
@@ -92,7 +92,7 @@ export function HomePage() {
               />
 
               <div className="mt-6 flex flex-wrap gap-3 text-xs uppercase tracking-[0.24em] text-stone-500">
-                {["馆内阅读活动", "一本书一条接龙", "审核后公开展示"].map((item) => (
+                {["馆内阅读活动"].map((item) => (
                   <span
                     key={item}
                     className="rounded-full border border-stone-200/80 bg-white/72 px-3 py-2"
@@ -101,10 +101,6 @@ export function HomePage() {
                   </span>
                 ))}
               </div>
-
-              <p className="mt-auto pt-10 text-sm leading-7 text-stone-500">
-                从一次搜索开始，找到那本正在流动的书。
-              </p>
             </div>
           </section>
 
@@ -137,7 +133,7 @@ export function HomePage() {
                 每一本书，都在静静等待它的下一位读者。
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-stone-200">
-                图书馆是我们阅读漂流的共同起点。从这里出发，留下属于你的那一层阅读印记。
+                从这里出发，留下属于你的那一层。
               </p>
               <div className="mt-8 flex items-center gap-3">
                 {slides.map((slide, index) => (
@@ -178,9 +174,6 @@ export function HomePage() {
               <div>
                 <p className="text-xs uppercase tracking-[0.34em] text-primary">Activity Rank</p>
                 <h2 className="mt-3 font-display text-3xl text-stone-900">留言量排行榜</h2>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600">
-                  找一本正在流动的书，接上属于你的那一层。
-                </p>
               </div>
               <span className="rounded-full bg-primary/8 px-3 py-2 text-xs uppercase tracking-[0.24em] text-primary">
                 当前展示 {activityPreview.length} 条
@@ -193,10 +186,7 @@ export function HomePage() {
             >
               <div>
                 <p className="text-xs uppercase tracking-[0.34em] text-primary">Featured Lines</p>
-                <h2 className="mt-3 font-display text-3xl text-stone-900">管理员精选留言</h2>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600">
-                  先读几段有代表性的接龙片段，再决定从哪本书进入。
-                </p>
+                <h2 className="mt-3 font-display text-3xl text-stone-900">精选留言</h2>
               </div>
               <span className="rounded-full bg-stone-900/6 px-3 py-2 text-xs uppercase tracking-[0.24em] text-stone-600">
                 当前展示 {featuredPreview.length} 条
@@ -205,13 +195,13 @@ export function HomePage() {
 
             {activityPreview.length === 0 ? (
               <div className="order-2 rounded-[1.6rem] border border-dashed border-stone-300 bg-surface p-4 text-sm leading-7 text-stone-500 lg:order-none lg:col-start-1 lg:row-span-5 lg:row-start-2">
-                当前还没有公开接龙，欢迎成为第一位留言的读者。
+                还没有留言，欢迎成为第一位。
               </div>
             ) : null}
 
             {featuredPreview.length === 0 ? (
               <div className="order-8 rounded-[1.6rem] border border-dashed border-stone-300 bg-white/70 p-4 text-sm leading-7 text-stone-500 lg:order-none lg:col-start-2 lg:row-span-5 lg:row-start-2">
-                还没有精选留言，管理员审核后会逐步补充。
+                暂无精选留言。
               </div>
             ) : null}
 
@@ -238,7 +228,7 @@ export function HomePage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
-                          热门接龙书页
+                          热门书页
                         </p>
                         <h3
                           className="mt-1 text-base font-semibold text-stone-900 transition group-hover:text-primary"
@@ -250,7 +240,7 @@ export function HomePage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="font-display text-3xl text-primary">{book.messageCount}</div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-stone-500">层留言</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-stone-500">条留言</p>
                     </div>
                   </Link>
                   ) : null}
@@ -303,8 +293,8 @@ export function HomePage() {
         >
           <SectionHeading
             eyebrow="How It Works"
-            title="如何留下你的那一层？"
-            description="阅读从来不是一件孤独的事。找到一本书，留下你的声音，让它继续流向下一位读者。"
+            title="如何留下你的留言？"
+            description="找到一本书，留下你的留言，让阅读继续流动。"
           />
           <div className="grid gap-4">
             {(assets.processContent || []).map((step, index) => (

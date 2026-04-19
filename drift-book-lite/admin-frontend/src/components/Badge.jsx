@@ -4,7 +4,7 @@ export function Badge({ children, tone = "default" }) {
   return (
     <span
       className={clsx(
-        "inline-flex rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.28em]",
+        "inline-flex rounded-full px-2.5 py-1 text-xs font-medium",
         tone === "accent" && "bg-primary/10 text-primary",
         tone === "muted" && "bg-stone-900/6 text-stone-500",
         tone === "success" && "bg-emerald-700/10 text-emerald-700",

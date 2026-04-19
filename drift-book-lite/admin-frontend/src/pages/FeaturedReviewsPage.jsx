@@ -5,6 +5,7 @@ import { PrimaryButton, SecondaryButton } from "../components/Button.jsx";
 import { StatusMessage } from "../components/StatusMessage.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
 import { AdminLayout } from "../components/AdminLayout.jsx";
+import { AdminList, AdminListItem, AdminMeta, AdminSection } from "../components/AdminUI.jsx";
 
 export function FeaturedReviewsPage({ token, onLogout }) {
   const [reviews, setReviews] = useState([]);
@@ -90,108 +91,102 @@ export function FeaturedReviewsPage({ token, onLogout }) {
   }
 
   return (
-    <AdminLayout
-      onLogout={onLogout}
-      title="精选运营"
-      description="维护首页精选留言顺序。"
-    >
+    <AdminLayout onLogout={onLogout} title="精选运营">
       <StatusMessage error={error} success={success} />
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.34em] text-primary">Selected</p>
-              <h3 className="mt-2 font-display text-3xl text-stone-900">当前精选</h3>
-            </div>
+        <AdminSection
+          title="当前精选"
+          actions={
             <PrimaryButton type="button" onClick={handleSave} disabled={saving}>
               {saving ? "正在保存" : "保存顺序"}
             </PrimaryButton>
-          </div>
-          <div className="mt-6 space-y-4">
+          }
+        >
+          <div className="mt-1">
             {selectedReviews.length === 0 ? (
               <EmptyState>尚无精选留言，从右侧列表中选取。</EmptyState>
             ) : (
-              selectedReviews.map((review, index) => (
-                <div
-                  key={review.id}
-                  className="rounded-[1.8rem] border border-stone-200 bg-white/85 p-5"
-                >
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Badge tone="accent">精选 {index + 1}</Badge>
-                    <span className="font-semibold text-stone-900">
-                      {review.groupedBook?.title || review.book?.title}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm leading-7 text-stone-700">{review.finalContent}</p>
-                  <p className="mt-2 text-xs text-stone-500">{review.displayName}</p>
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    <SecondaryButton
-                      type="button"
-                      className="px-4 py-2 text-xs"
-                      onClick={() => moveSelected(review.id, -1)}
-                      disabled={index === 0}
-                    >
-                      上移
-                    </SecondaryButton>
-                    <SecondaryButton
-                      type="button"
-                      className="px-4 py-2 text-xs"
-                      onClick={() => moveSelected(review.id, 1)}
-                      disabled={index === selectedReviews.length - 1}
-                    >
-                      下移
-                    </SecondaryButton>
-                    <SecondaryButton
-                      type="button"
-                      className="px-4 py-2 text-xs"
-                      onClick={() => removeSelected(review.id)}
-                    >
-                      移出精选
-                    </SecondaryButton>
-                  </div>
-                </div>
-              ))
+              <AdminList>
+                {selectedReviews.map((review, index) => (
+                  <AdminListItem key={review.id}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone="accent">精选 {index + 1}</Badge>
+                      <span className="font-semibold text-stone-900">
+                        {review.groupedBook?.title || review.book?.title}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-stone-700">{review.finalContent}</p>
+                    <AdminMeta className="mt-2">
+                      <span>{review.displayName}</span>
+                    </AdminMeta>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <SecondaryButton
+                        type="button"
+                        className="px-3 py-1.5 text-xs"
+                        onClick={() => moveSelected(review.id, -1)}
+                        disabled={index === 0}
+                      >
+                        上移
+                      </SecondaryButton>
+                      <SecondaryButton
+                        type="button"
+                        className="px-3 py-1.5 text-xs"
+                        onClick={() => moveSelected(review.id, 1)}
+                        disabled={index === selectedReviews.length - 1}
+                      >
+                        下移
+                      </SecondaryButton>
+                      <SecondaryButton
+                        type="button"
+                        className="px-3 py-1.5 text-xs"
+                        onClick={() => removeSelected(review.id)}
+                      >
+                        移出精选
+                      </SecondaryButton>
+                    </div>
+                  </AdminListItem>
+                ))}
+              </AdminList>
             )}
           </div>
-        </section>
+        </AdminSection>
 
-        <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-          <p className="text-xs uppercase tracking-[0.34em] text-primary">Approved</p>
-          <h3 className="mt-2 font-display text-3xl text-stone-900">可选公开留言</h3>
+        <AdminSection title="可选公开留言">
           <div className="mt-6 space-y-4">
             {availableReviews.length === 0 ? (
               <EmptyState>暂无可加入精选的公开留言。</EmptyState>
             ) : (
-              availableReviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="rounded-[1.8rem] border border-stone-200 bg-white/85 p-5"
-                >
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="font-semibold text-stone-900">
-                      {review.groupedBook?.title || review.book?.title}
-                    </span>
-                    {review.sequenceNumber ? (
-                      <Badge tone="muted">第 {review.sequenceNumber} 层</Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-3 text-sm leading-7 text-stone-700">{review.finalContent}</p>
-                  <p className="mt-2 text-xs text-stone-500">{review.displayName}</p>
-                  <div className="mt-4">
-                    <PrimaryButton
-                      type="button"
-                      className="px-4 py-2 text-xs"
-                      disabled={selectedIds.length >= 10}
-                      onClick={() => setSelectedIds((current) => [...current, review.id])}
-                    >
-                      加入精选
-                    </PrimaryButton>
-                  </div>
-                </div>
-              ))
+              <AdminList>
+                {availableReviews.map((review) => (
+                  <AdminListItem key={review.id}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-stone-900">
+                        {review.groupedBook?.title || review.book?.title}
+                      </span>
+                      {review.sequenceNumber ? (
+                        <Badge tone="muted">第 {review.sequenceNumber} 层</Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-stone-700">{review.finalContent}</p>
+                    <AdminMeta className="mt-2">
+                      <span>{review.displayName}</span>
+                    </AdminMeta>
+                    <div className="mt-3">
+                      <PrimaryButton
+                        type="button"
+                        className="px-3 py-1.5 text-xs"
+                        disabled={selectedIds.length >= 10}
+                        onClick={() => setSelectedIds((current) => [...current, review.id])}
+                      >
+                        加入精选
+                      </PrimaryButton>
+                    </div>
+                  </AdminListItem>
+                ))}
+              </AdminList>
             )}
           </div>
-        </section>
+        </AdminSection>
       </div>
     </AdminLayout>
   );

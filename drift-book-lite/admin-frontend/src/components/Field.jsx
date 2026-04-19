@@ -1,3 +1,5 @@
+import clsx from "clsx";
+
 export function Field({ label, children, hint }) {
   return (
     <label className="block">
@@ -8,4 +10,8 @@ export function Field({ label, children, hint }) {
       {hint ? <p className="mt-2 text-xs text-stone-500">{hint}</p> : null}
     </label>
   );
+}
+
+export function FieldRow({ children, className }) {
+  return <div className={clsx("grid gap-4 md:grid-cols-2", className)}>{children}</div>;
 }

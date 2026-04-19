@@ -36,6 +36,11 @@ const {
 } = require("../services/assets");
 const { importDefaultSensitiveWords } = require("../services/defaultSensitiveWords");
 const { importStudentRoster } = require("../services/studentRoster");
+const {
+  getDefaultResources,
+  importDefaultBookCatalog,
+  importDefaultStudentRoster,
+} = require("../services/defaultResources");
 const { HttpError } = require("../utils/httpError");
 
 const router = express.Router();
@@ -120,6 +125,11 @@ router.post("/login", async (req, res) => {
 
 router.use(requireAdmin);
 
+router.get("/default-resources", async (_req, res) => {
+  const resources = await getDefaultResources();
+  res.json({ resources });
+});
+
 router.patch("/me/password", async (req, res) => {
   const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
   const adminUser = await prisma.adminUser.findUnique({
@@ -191,6 +201,22 @@ router.post("/imports", uploadMemory.single("file"), async (req, res) => {
   });
 });
 
+router.post("/imports/default-catalog", async (req, res) => {
+  const batch = await importDefaultBookCatalog({ adminUserId: req.adminUser.sub });
+  res.status(201).json({
+    batch: {
+      id: batch.id,
+      fileName: batch.fileName,
+      catalogName: batch.catalogName,
+      importMode: batch.importMode,
+      status: batch.status,
+      totalRows: batch.totalRows,
+      successRows: batch.successRows,
+      failedRows: batch.failedRows,
+    },
+  });
+});
+
 router.get("/imports", async (_req, res) => {
   const batches = await listImportBatches();
   res.json({ batches });
@@ -214,6 +240,11 @@ router.post("/student-roster/import", uploadMemory.single("file"), async (req, r
     decodeUploadFilename(req.file.originalname),
     { mode }
   );
+  res.status(200).json(result);
+});
+
+router.post("/student-roster/import-default", async (_req, res) => {
+  const result = await importDefaultStudentRoster();
   res.status(200).json(result);
 });
 

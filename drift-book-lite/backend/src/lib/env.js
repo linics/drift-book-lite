@@ -39,12 +39,19 @@ module.exports = {
   defaultSensitiveWordsDir:
     process.env.DEFAULT_SENSITIVE_WORDS_DIR ||
     path.resolve(projectRoot, "resources", "default-sensitive-words"),
+  defaultBookCatalogPath:
+    process.env.DEFAULT_BOOK_CATALOG_PATH ||
+    path.resolve(projectRoot, "resources", "default-book-catalog", "图书馆7楼流通室数据.xlsx"),
+  defaultStudentRosterPath:
+    process.env.DEFAULT_STUDENT_ROSTER_PATH ||
+    path.resolve(projectRoot, "resources", "default-student-roster", "2025学年学生信息.xls"),
   teacherRosterPath:
     process.env.TEACHER_ROSTER_PATH ||
     path.resolve(projectRoot, "resources", "default-teacher-roster", "2025-teachers.txt"),
   studentRosterPath:
     process.env.STUDENT_ROSTER_PATH ||
-    path.resolve(projectRoot, "..", "2025学年学生信息.xls"),
+    process.env.DEFAULT_STUDENT_ROSTER_PATH ||
+    path.resolve(projectRoot, "resources", "default-student-roster", "2025学年学生信息.xls"),
   uploadsDir: process.env.UPLOADS_DIR
     ? path.resolve(process.env.UPLOADS_DIR)
     : path.resolve(projectRoot, "uploads"),

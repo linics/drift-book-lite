@@ -89,6 +89,8 @@ APP_BASE_URL="http://10.11.23.45:5174"
 ADMIN_APP_BASE_URL="http://10.11.23.45:5175"
 DEFAULT_SITE_ASSETS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-site-assets"
 DEFAULT_SENSITIVE_WORDS_DIR="D:/your-path/library-management-system/drift-book-lite/resources/default-sensitive-words"
+DEFAULT_BOOK_CATALOG_PATH="D:/your-path/library-management-system/drift-book-lite/resources/default-book-catalog/图书馆7楼流通室数据.xlsx"
+DEFAULT_STUDENT_ROSTER_PATH="D:/your-path/library-management-system/drift-book-lite/resources/default-student-roster/2025学年学生信息.xls"
 TEACHER_ROSTER_PATH="D:/your-path/library-management-system/drift-book-lite/resources/default-teacher-roster/2025-teachers.txt"
 ```
 
@@ -102,13 +104,16 @@ TEACHER_ROSTER_PATH="D:/your-path/library-management-system/drift-book-lite/reso
 - `ADMIN_APP_BASE_URL`：管理端访问地址，后端默认会把它加入允许的 CORS 来源
 - `DEFAULT_SITE_ASSETS_DIR`：指向 `drift-book-lite/resources/default-site-assets`
 - `DEFAULT_SENSITIVE_WORDS_DIR`：指向 `drift-book-lite/resources/default-sensitive-words`
+- `DEFAULT_BOOK_CATALOG_PATH`：指向 `drift-book-lite/resources/default-book-catalog/图书馆7楼流通室数据.xlsx`
+- `DEFAULT_STUDENT_ROSTER_PATH`：可指向本机学生名册路径；学生名册属于部署数据，不随代码提交
+- `STUDENT_ROSTER_PATH`：可选覆盖路径；设置后优先于默认学生名册
 - `TEACHER_ROSTER_PATH`：指向 `drift-book-lite/resources/default-teacher-roster/2025-teachers.txt`
 
 补充说明：
 
-- 管理端“站点素材”页里显示的默认素材目录提示，来自后端当前运行环境，不是前端写死文案。
+- 管理端图书、学生名册、敏感词和站点素材页里显示的默认路径，来自后端当前运行环境，不是前端写死文案。
 - 在 Windows 无 Docker 部署时，这里会显示你本机 `.env` 里配置的真实目录。
-- 只要换电脑后把 `DEFAULT_SITE_ASSETS_DIR` 改成新机器上的实际路径，页面提示会自动跟着变化。
+- 只要换电脑后把默认资源路径改成新机器上的实际路径，页面提示会自动跟着变化。
 
 安装并初始化：
 
@@ -216,10 +221,12 @@ npm.cmd run preview -- --host 0.0.0.0 --port 5175
 - `5174`
 - `5175`
 
-首次进入管理端后，建议再验证两项：
+首次进入管理端后，建议验证：
 
-- “站点素材”页能看到当前默认目录，并与 `.env` 中的 `DEFAULT_SITE_ASSETS_DIR` 一致
-- “敏感词库”页可执行“导入内置词库”，把仓库内置的 7 类默认词条导入数据库
+- “图书与导入”页能看到默认 7 楼目录，并可执行“导入默认目录”
+- “学生花名册”页能看到默认学生名册路径；路径存在时可执行“导入默认名册”
+- “敏感词库”页能看到默认词库目录，并可执行“导入内置词库”
+- “站点素材”页能看到默认素材目录，并可执行“重新载入默认素材”
 
 ## 为什么需要 3 个窗口
 
@@ -286,6 +293,8 @@ npm.cmd run build
 - `drift-book-lite/backend/dev.db`
 - `drift-book-lite/backend/uploads/`
 - `drift-book-lite/resources/default-site-assets/`
+- `drift-book-lite/resources/default-book-catalog/`
+- 本机学生名册文件，例如 `package-data/student-roster.xls` 或 `drift-book-lite/resources/default-student-roster/2025学年学生信息.xls`
 - 各目录下实际使用的 `.env`
 
 至少要定期备份这些内容。

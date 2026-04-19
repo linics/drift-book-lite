@@ -30,6 +30,7 @@ import { ReviewsPage } from "./pages/ReviewsPage.jsx";
 import { FeaturedReviewsPage } from "./pages/FeaturedReviewsPage.jsx";
 import { SensitiveWordsPage } from "./pages/SensitiveWordsPage.jsx";
 import { AssetsPage } from "./pages/AssetsPage.jsx";
+import { StudentRosterPage } from "./pages/StudentRosterPage.jsx";
 import App from "./App.jsx";
 
 const TOKEN = "test-token";
@@ -50,6 +51,29 @@ const assetsResponse = {
   processContent: [],
   defaultSiteAssetsDir: "/tmp/default-site-assets",
 };
+const defaultResourcesResponse = {
+  resources: {
+    bookCatalog: {
+      path: "/tmp/resources/default-book-catalog/图书馆7楼流通室数据.xlsx",
+      exists: true,
+      bookCount: 1,
+    },
+    studentRoster: {
+      path: "/tmp/resources/default-student-roster/2025学年学生信息.xls",
+      exists: true,
+      studentCount: 1,
+    },
+    sensitiveWords: {
+      path: "/tmp/resources/default-sensitive-words",
+      exists: true,
+      wordCount: 12,
+    },
+    siteAssets: {
+      path: "/tmp/default-site-assets",
+      exists: true,
+    },
+  },
+};
 
 function wrap(ui, path = "/") {
   return render(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>);
@@ -65,6 +89,9 @@ describe("AdminLoginPage", () => {
   test("renders username/password fields and submit button", () => {
     wrap(<AdminLoginPage />);
 
+    expect(screen.getByText("Admin Access")).toBeInTheDocument();
+    expect(screen.getByText("管理员登录")).toBeInTheDocument();
+    expect(screen.getByText(/管理书目/)).toBeInTheDocument();
     expect(screen.getByLabelText(/用户名/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/密码/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "进入后台" })).toBeInTheDocument();
@@ -120,6 +147,9 @@ describe("Account settings", () => {
     mockGet.mockImplementation((path) => {
       if (path === "/admin/books") return Promise.resolve({ data: booksResponse });
       if (path === "/admin/imports") return Promise.resolve({ data: { batches: [] } });
+      if (path === "/admin/default-resources") {
+        return Promise.resolve({ data: defaultResourcesResponse });
+      }
       return Promise.reject(new Error(`Unexpected GET: ${path}`));
     });
   });
@@ -213,6 +243,9 @@ describe("BooksPage", () => {
     mockGet.mockImplementation((path) => {
       if (path === "/admin/books") return Promise.resolve({ data: booksResponse });
       if (path === "/admin/imports") return Promise.resolve({ data: { batches: [] } });
+      if (path === "/admin/default-resources") {
+        return Promise.resolve({ data: defaultResourcesResponse });
+      }
       return Promise.reject(new Error(`Unexpected GET: ${path}`));
     });
   });
@@ -220,8 +253,30 @@ describe("BooksPage", () => {
   test("renders page heading and book list", async () => {
     wrap(<BooksPage token={TOKEN} onLogout={NOOP} />);
 
+    expect(await screen.findByRole("heading", { name: "图书与导入" })).toBeInTheDocument();
     expect(await screen.findByText("漂流书目")).toBeInTheDocument();
     expect(screen.getByText("某作者")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "默认图书目录" })).toBeInTheDocument();
+    expect(screen.getByText("/tmp/resources/default-book-catalog/图书馆7楼流通室数据.xlsx")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "导入默认目录" })).toBeInTheDocument();
+    expect(screen.getByText("Admin Panel")).toBeInTheDocument();
+    expect(screen.getByText("Admin Console")).toBeInTheDocument();
+    expect(screen.getByText("图书、留言和首页素材都在这里维护。")).toBeInTheDocument();
+  });
+
+  test("uses mainline admin shell styling", async () => {
+    wrap(<BooksPage token={TOKEN} onLogout={NOOP} />);
+
+    const pageHeading = await screen.findByRole("heading", { name: "图书与导入" });
+    expect(pageHeading.closest("header")).toHaveClass("rounded-[2.4rem]");
+    expect(pageHeading.closest("header")).toHaveClass("bg-white/80");
+    expect(screen.getByRole("navigation").closest("aside")).toHaveClass("text-white");
+    expect(screen.getByRole("navigation").closest("aside")?.className).toContain(
+      "bg-[linear-gradient"
+    );
+    expect(screen.getByRole("heading", { name: "馆藏图书" }).closest("section")).toHaveClass(
+      "paper-panel"
+    );
   });
 
   test("shows empty state when no batches exist", async () => {
@@ -245,7 +300,7 @@ describe("BooksPage", () => {
     wrap(<BooksPage token={TOKEN} onLogout={NOOP} />);
 
     await screen.findByText("漂流书目");
-    expect(screen.getByText(/若 book_id 已存在，该行会失败/)).toBeInTheDocument();
+    expect(screen.getByText("已存在的 book_id 不会被覆盖。")).toBeInTheDocument();
   });
 
   test("allows selecting csv, xls, and xlsx catalog files", async () => {
@@ -262,6 +317,9 @@ describe("BooksPage", () => {
   test("shows batch list when batches exist", async () => {
     mockGet.mockImplementation((path) => {
       if (path === "/admin/books") return Promise.resolve({ data: booksResponse });
+      if (path === "/admin/default-resources") {
+        return Promise.resolve({ data: defaultResourcesResponse });
+      }
       if (path === "/admin/imports")
         return Promise.resolve({
           data: {
@@ -286,6 +344,68 @@ describe("BooksPage", () => {
     expect(await screen.findByText("2025年书目")).toBeInTheDocument();
     expect(screen.getByText(/已完成/)).toBeInTheDocument();
   });
+
+  test("keeps book data visible when default resource metadata is unavailable", async () => {
+    mockGet.mockImplementation((path) => {
+      if (path === "/admin/books") return Promise.resolve({ data: booksResponse });
+      if (path === "/admin/imports") return Promise.resolve({ data: { batches: [] } });
+      if (path === "/admin/default-resources") {
+        return Promise.reject({ response: { data: { message: "默认资源接口不存在" } } });
+      }
+      return Promise.reject(new Error(`Unexpected GET: ${path}`));
+    });
+
+    wrap(<BooksPage token={TOKEN} onLogout={NOOP} />);
+
+    expect(await screen.findByText("漂流书目")).toBeInTheDocument();
+    expect(screen.queryByText("后台数据加载失败")).not.toBeInTheDocument();
+  });
+});
+
+describe("StudentRosterPage", () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockPost.mockReset();
+    mockGet.mockImplementation((path) => {
+      if (path === "/admin/default-resources") {
+        return Promise.resolve({ data: defaultResourcesResponse });
+      }
+      return Promise.reject(new Error(`Unexpected GET: ${path}`));
+    });
+  });
+
+  test("shows the default student roster import entry", async () => {
+    wrap(<StudentRosterPage token={TOKEN} onLogout={NOOP} />);
+
+    expect(await screen.findByRole("heading", { name: "默认学生名册" })).toBeInTheDocument();
+    expect(screen.getByText("/tmp/resources/default-student-roster/2025学年学生信息.xls")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "导入默认名册" })).toBeInTheDocument();
+    expect(screen.getByText("必填列：系统号、姓名、所在班级。")).toBeInTheDocument();
+  });
+
+  test("imports the default student roster and shows summary", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        totalRows: 2,
+        successRows: 2,
+        failedRows: 0,
+        failures: [],
+        defaultStudentRosterPath: "/tmp/resources/default-student-roster/2025学年学生信息.xls",
+      },
+    });
+
+    wrap(<StudentRosterPage token={TOKEN} onLogout={NOOP} />);
+    await userEvent.setup().click(await screen.findByRole("button", { name: "导入默认名册" }));
+
+    expect(mockPost).toHaveBeenCalledWith(
+      "/admin/student-roster/import-default",
+      {},
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: `Bearer ${TOKEN}` }),
+      })
+    );
+    expect(await screen.findByText("导入完成：共 2 行，全部成功。")).toBeInTheDocument();
+  });
 });
 
 // ─── ReviewsPage ─────────────────────────────────────────────────────────────
@@ -300,6 +420,7 @@ const pendingReview = {
   isFeatured: false,
   sensitiveHit: false,
   matchedSensitiveWords: [],
+  createdAt: "2026-04-19T08:30:00.000Z",
   groupedBook: {
     title: "漂流书目",
     author: "某作者",
@@ -328,8 +449,10 @@ describe("ReviewsPage", () => {
   test("shows book title and original content", async () => {
     wrap(<ReviewsPage token={TOKEN} onLogout={NOOP} />);
 
+    expect(await screen.findByRole("heading", { name: "审核列表" })).toBeInTheDocument();
     expect(await screen.findByText("漂流书目")).toBeInTheDocument();
     expect(screen.getByText(/原文：这是一条待审核的留言。/)).toBeInTheDocument();
+    expect(screen.getByText(/提交时间：2026/)).toBeInTheDocument();
   });
 
   test("shows student identity info", async () => {
@@ -509,28 +632,59 @@ describe("SensitiveWordsPage", () => {
     mockGet.mockReset();
     mockPost.mockReset();
     mockGet.mockImplementation((path) => {
-      if (path === "/admin/sensitive-words") {
-        return Promise.resolve({
-          data: {
-            words: [{ id: "w1", word: "禁词" }],
-            pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
-          },
-        });
+      if (path === "/admin/default-resources") {
+        return Promise.resolve({ data: defaultResourcesResponse });
       }
-      return Promise.reject(new Error(`Unexpected GET: ${path}`));
+      return Promise.reject(new Error("Sensitive words page should not load word entries"));
     });
   });
 
-  test("shows concise default dictionary copy without source file listing", async () => {
+  test("shows only the default dictionary import entry", async () => {
     wrap(<SensitiveWordsPage token={TOKEN} onLogout={NOOP} />);
 
     expect(await screen.findByRole("heading", { name: "导入内置词库" })).toBeInTheDocument();
-    expect(screen.getByText("内置 7 类默认词库，导入时会自动去重并跳过已有词条。")).toBeInTheDocument();
     expect(screen.getByText("默认词库目录")).toBeInTheDocument();
-    expect(screen.getByText("词库文件随项目部署。")).toBeInTheDocument();
-    expect(screen.getByText("默认词库不含政治类、GFW 补充、腾讯/网易大杂包等高误判类别。")).toBeInTheDocument();
+    expect(screen.getByText("/tmp/resources/default-sensitive-words")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "导入内置词库" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "新增敏感词" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "现有词库" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("搜索词条")).not.toBeInTheDocument();
+    expect(screen.queryByText("添加词条")).not.toBeInTheDocument();
+    expect(screen.queryByText("保存修改")).not.toBeInTheDocument();
+    expect(screen.queryByText("删除")).not.toBeInTheDocument();
+    expect(screen.queryByText("敏感词库加载失败")).not.toBeInTheDocument();
+    expect(screen.queryByText("自动去重，跳过已有词条。")).not.toBeInTheDocument();
+    expect(screen.queryByText("词库文件随项目部署。")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("默认词库不含政治类、GFW 补充、腾讯/网易大杂包等高误判类别。")
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/中度扩容默认词库/)).not.toBeInTheDocument();
     expect(screen.queryByText(/内置文件：/)).not.toBeInTheDocument();
+  });
+
+  test("imports the default dictionary and shows summary", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        defaultSensitiveWordsDir: "/tmp/default-sensitive-words",
+        totalWords: 12,
+        importedWords: 5,
+        skippedWords: 7,
+      },
+    });
+
+    wrap(<SensitiveWordsPage token={TOKEN} onLogout={NOOP} />);
+    await userEvent.setup().click(await screen.findByRole("button", { name: "导入内置词库" }));
+
+    expect(mockPost).toHaveBeenCalledWith(
+      "/admin/sensitive-words/import-defaults",
+      {},
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: `Bearer ${TOKEN}` }),
+      })
+    );
+    expect(await screen.findByText("内置词库导入完成：新增 5 条，跳过 7 条。")).toBeInTheDocument();
+    expect(screen.getByText("共 12 条，新增 5 条，跳过 7 条")).toBeInTheDocument();
+    expect(mockGet).not.toHaveBeenCalledWith("/admin/sensitive-words", expect.anything());
   });
 });
 
@@ -539,7 +693,13 @@ describe("AssetsPage", () => {
     mockGet.mockReset();
     mockPost.mockReset();
     mockDelete.mockReset();
-    mockGet.mockResolvedValue({ data: assetsResponse });
+    mockGet.mockImplementation((path) => {
+      if (path === "/admin/assets") return Promise.resolve({ data: assetsResponse });
+      if (path === "/admin/default-resources") {
+        return Promise.resolve({ data: defaultResourcesResponse });
+      }
+      return Promise.reject(new Error(`Unexpected GET: ${path}`));
+    });
     vi.restoreAllMocks();
   });
 
@@ -547,7 +707,23 @@ describe("AssetsPage", () => {
     wrap(<AssetsPage token={TOKEN} onLogout={NOOP} />);
 
     expect(await screen.findByText("校园轮播 1")).toBeInTheDocument();
+    expect(screen.getByText("/tmp/default-site-assets")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "删除轮播图" })).toBeInTheDocument();
+  });
+
+  test("keeps site assets visible when default resource metadata is unavailable", async () => {
+    mockGet.mockImplementation((path) => {
+      if (path === "/admin/assets") return Promise.resolve({ data: assetsResponse });
+      if (path === "/admin/default-resources") {
+        return Promise.reject({ response: { data: { message: "默认资源接口不存在" } } });
+      }
+      return Promise.reject(new Error(`Unexpected GET: ${path}`));
+    });
+
+    wrap(<AssetsPage token={TOKEN} onLogout={NOOP} />);
+
+    expect(await screen.findByText("校园轮播 1")).toBeInTheDocument();
+    expect(screen.queryByText("素材加载失败")).not.toBeInTheDocument();
   });
 
   test("deletes a carousel asset and shows success feedback", async () => {
