@@ -172,7 +172,6 @@ export function BooksPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="图书与导入"
-      description="导入书目并维护图书信息。"
     >
       <StatusMessage error={loadError} />
 
@@ -201,8 +200,8 @@ export function BooksPage({ token, onLogout }) {
               </SelectInput>
               <p className="mt-2 text-xs leading-6 text-stone-500">
                 {importForm.importMode === "create_only"
-                  ? "只新增：若 book_id 已存在，该行会失败，不覆盖旧数据。"
-                  : "新增或更新：若 book_id 已存在，会用新文件中的数据覆盖旧记录。"}
+                  ? "已存在的 book_id 不会被覆盖。"
+                  : "已存在的 book_id 会更新。"}
               </p>
             </Field>
             <Field
@@ -302,14 +301,14 @@ export function BooksPage({ token, onLogout }) {
               </Field>
               <SecondaryButton
                 type="button"
-                className="h-12"
+                className="h-12 shrink-0 min-w-[4.5rem]"
                 onClick={() => loadData({ keyword: query, page: 1 })}
               >
                 搜索
               </SecondaryButton>
               <SecondaryButton
                 type="button"
-                className="h-12"
+                className="h-12 shrink-0 min-w-[4.5rem]"
                 onClick={() => {
                   setQuery("");
                   loadData({ keyword: "", page: 1 });

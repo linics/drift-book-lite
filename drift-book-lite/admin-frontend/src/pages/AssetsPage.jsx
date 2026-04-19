@@ -122,11 +122,10 @@ export function AssetsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="站点素材"
-      description="管理首页 Logo 和轮播图。"
     >
       <StatusMessage error={error} success={success} />
       {!assets ? (
-        <div className="paper-panel rounded-[2.4rem] p-8 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+        <div className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
           正在加载素材...
         </div>
       ) : (

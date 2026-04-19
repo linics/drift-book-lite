@@ -156,7 +156,6 @@ export function SensitiveWordsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="敏感词库"
-      description="维护审核辅助词库。"
     >
       <StatusMessage error={error} success={success} />
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
@@ -164,18 +163,12 @@ export function SensitiveWordsPage({ token, onLogout }) {
           <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
             <h3 className="font-display text-3xl text-stone-900">导入内置词库</h3>
             <p className="mt-3 text-sm leading-7 text-stone-600">
-              内置 7 类默认词库，导入时会自动去重并跳过已有词条。
+              自动去重，跳过已有词条。
             </p>
             <div className="mt-5 rounded-[1.8rem] border border-stone-200 bg-white/85 p-5">
               <p className="text-xs uppercase tracking-[0.28em] text-stone-500">默认词库目录</p>
               <p className="mt-3 break-all rounded-2xl bg-surface px-4 py-3 font-mono text-xs text-stone-700">
                 {importSummary?.defaultSensitiveWordsDir || "使用后端当前默认目录"}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-stone-500">
-                词库文件随项目部署。
-              </p>
-              <p className="mt-3 text-xs leading-6 text-stone-500">
-                默认词库不含政治类、GFW 补充、腾讯/网易大杂包等高误判类别。
               </p>
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -214,9 +207,6 @@ export function SensitiveWordsPage({ token, onLogout }) {
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h3 className="font-display text-3xl text-stone-900">现有词库</h3>
-              <p className="mt-2 text-sm text-stone-500">
-                当前显示第 {pagination.page} / {pagination.totalPages} 页，共 {pagination.total} 条
-              </p>
             </div>
             <div className="flex flex-col gap-3 md:flex-row md:items-end">
               <Field label="搜索词条">
@@ -235,14 +225,14 @@ export function SensitiveWordsPage({ token, onLogout }) {
               </Field>
               <SecondaryButton
                 type="button"
-                className="h-12"
+                className="h-12 shrink-0 min-w-[4.5rem]"
                 onClick={() => loadWords({ keyword: query, page: 1 })}
               >
                 搜索
               </SecondaryButton>
               <SecondaryButton
                 type="button"
-                className="h-12"
+                className="h-12 shrink-0 min-w-[4.5rem]"
                 onClick={() => {
                   setQuery("");
                   loadWords({ keyword: "", page: 1 });
@@ -253,7 +243,7 @@ export function SensitiveWordsPage({ token, onLogout }) {
             </div>
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] border border-stone-200 bg-white/65 px-4 py-3 text-sm text-stone-600">
-            <span>分页加载可避免词库扩大后一次性读取全部词条。</span>
+            <span>第 {pagination.page} / {pagination.totalPages} 页，共 {pagination.total} 条</span>
             <div className="flex gap-2">
               <SecondaryButton
                 type="button"

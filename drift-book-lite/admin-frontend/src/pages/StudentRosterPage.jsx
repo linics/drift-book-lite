@@ -47,11 +47,11 @@ export function StudentRosterPage({ token, onLogout }) {
   return (
     <AdminLayout
       title="学生花名册"
-      description="通过 CSV 或 Excel 文件导入学生数据，供学生提交评语时身份校验使用。"
+      description="通过 CSV 或 Excel 文件导入学生数据，供学生提交留言时身份校验使用。"
       onLogout={onLogout}
     >
-      <div className="rounded-[2.4rem] border border-stone-200/70 bg-white/80 p-8 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
-        <h3 className="font-display text-2xl text-stone-900">导入学生数据</h3>
+      <div className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
+        <h3 className="font-display text-3xl text-stone-900">导入学生数据</h3>
         <p className="mt-2 text-sm text-stone-500">
           支持 .csv、.xls、.xlsx 格式。必填列：系统号、姓名、所在班级。
         </p>

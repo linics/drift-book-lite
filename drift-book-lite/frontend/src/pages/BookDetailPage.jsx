@@ -152,7 +152,7 @@ export function BookDetailPage() {
       <AnimatedPage>
       <main className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="paper-panel rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)] md:p-10">
-          <Badge tone="accent">单书接龙页</Badge>
+          <Badge tone="accent">留言页</Badge>
           <h1 className="mt-6 font-display text-5xl leading-tight text-stone-900">
             {book.title}
           </h1>
@@ -178,12 +178,6 @@ export function BookDetailPage() {
               <p className="mt-3 text-sm text-stone-500">暂无条形码信息</p>
             )}
           </div>
-          <div className="mt-6 rounded-[1.8rem] border border-primary/10 bg-primary/5 p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-primary">留言规则</p>
-            <p className="mt-3 text-sm leading-7 text-stone-700">
-              留言审核通过后会公开显示。
-            </p>
-          </div>
           <div className="mt-8 flex gap-3">
             <Link to="/"><SecondaryButton>返回首页</SecondaryButton></Link>
           </div>
@@ -193,13 +187,13 @@ export function BookDetailPage() {
           <div className="paper-panel rounded-[2.4rem] p-8 shadow-[0_30px_90px_rgba(58,39,18,0.12)]">
             <SectionHeading
               eyebrow="Public Thread"
-              title="已公开接龙"
-              description="已通过审核的留言会显示在这里。"
+              title="已公开留言"
+              description=""
             />
             <div className="mt-8 space-y-5">
               {reviews.length === 0 ? (
                 <div className="rounded-[1.8rem] border border-dashed border-stone-300 bg-surface p-6 text-sm leading-7 text-stone-500">
-                  这本书还没有公开接龙，欢迎你成为第一位接上去的读者。
+                  还没有留言，欢迎你成为第一位。
                 </div>
               ) : null}
               {reviews.map((review, index) => (
@@ -226,9 +220,8 @@ export function BookDetailPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-primary">Join The Chain</p>
-                <h2 className="mt-2 font-display text-3xl text-stone-900">接上你的这一层</h2>
+                <h2 className="mt-2 font-display text-3xl text-stone-900">写下你的留言</h2>
               </div>
-              <Badge tone="accent">审核后公开</Badge>
             </div>
 
             <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
@@ -289,7 +282,7 @@ export function BookDetailPage() {
                       placeholder="请输入学籍姓名"
                     />
                   </Field>
-                  <Field label="身份证后四位" hint="如系统留存该信息，则用于校验。">
+                  <Field label="身份证后四位" hint="可用于身份校验，可留空。">
                     <TextInput
                       value={formState.idCardSuffix}
                       onChange={(e) =>
@@ -301,13 +294,13 @@ export function BookDetailPage() {
                   </Field>
                 </>
               )}
-              <Field label="接龙内容" hint="请输入 1 到 500 字的阅读感受或回应。">
+              <Field label="留言内容" hint="最多 500 字。">
                 <TextArea
                   rows={5}
                   value={formState.content}
                   onChange={(e) => setFormState((s) => ({ ...s, content: e.target.value }))}
                   disabled={submitting}
-                  placeholder="写下你想接上的这一层内容。"
+                  placeholder="写下你的阅读感受或回应。"
                 />
               </Field>
 

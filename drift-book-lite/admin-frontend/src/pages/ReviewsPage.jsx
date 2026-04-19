@@ -38,7 +38,7 @@ export function ReviewsPage({ token, onLogout }) {
         onLogout();
         return;
       }
-      setError(requestMessage(requestError, "评语列表加载失败"));
+      setError(requestMessage(requestError, "留言列表加载失败"));
     }
   }
 
@@ -82,7 +82,7 @@ export function ReviewsPage({ token, onLogout }) {
         onLogout();
         return;
       }
-      setError(requestMessage(requestError, "评语操作失败"));
+      setError(requestMessage(requestError, "留言操作失败"));
     }
   }
 
@@ -106,13 +106,13 @@ export function ReviewsPage({ token, onLogout }) {
       link.download = `reviews-${Date.now()}.csv`;
       link.click();
       window.URL.revokeObjectURL(url);
-      setSuccess("评论 CSV 已开始下载。");
+      setSuccess("CSV 已开始下载。");
     } catch (requestError) {
       if (isUnauthorized(requestError)) {
         onLogout();
         return;
       }
-      setError(requestMessage(requestError, "评论导出失败"));
+      setError(requestMessage(requestError, "导出失败"));
     } finally {
       setExporting(false);
     }
@@ -122,7 +122,6 @@ export function ReviewsPage({ token, onLogout }) {
     <AdminLayout
       onLogout={onLogout}
       title="留言审核"
-      description="审核留言并处理导出。"
     >
       <StatusMessage error={error} success={success} />
       <section className="paper-panel rounded-[2.4rem] p-7 shadow-[0_20px_70px_rgba(48,34,17,0.08)]">
@@ -177,7 +176,7 @@ export function ReviewsPage({ token, onLogout }) {
                     ) : review.teacherIdentity ? (
                       <span>教师姓名：{review.teacherIdentity.teacherName}</span>
                     ) : (
-                      <span>来源：历史旧评语</span>
+                      <span>来源：历史旧留言</span>
                     )}
                   </div>
                   {review.groupedBook ? (
