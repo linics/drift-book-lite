@@ -22,8 +22,8 @@ export function AdminLoginPage() {
     return message;
   });
   const [formState, setFormState] = useState({
-    username: "admin1",
-    password: "change-this-password",
+    username: "",
+    password: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

@@ -26,7 +26,7 @@ export function PublicShell({ children, assets }) {
                 上海市敬业中学
               </p>
               <Link to="/" className="font-display text-2xl tracking-[0.02em] text-stone-900">
-                一本书的漂流
+                一本书的旅行
               </Link>
             </div>
           </div>

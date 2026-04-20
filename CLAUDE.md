@@ -105,7 +105,7 @@ cd drift-book-lite/admin-frontend
 npm run dev
 ```
 
-Windows no-Docker helpers live in `scripts/windows/`. The generated backend `.env` should include the default book catalog, default assets, sensitive words, teacher roster, student roster, and uploads paths.
+Windows no-Docker helpers live in `scripts/windows/`. The generated backend `.env` may leave default resource paths empty so the backend resolves bundled defaults from `drift-book-lite/resources`; `UPLOADS_DIR` should point at `drift-book-lite/uploads`.
 
 ## Database
 
@@ -147,11 +147,9 @@ Deployment/config changes should keep `drift-book-lite/backend/tests/deployment-
 ├── CLAUDE.md
 ├── REQUIREMENTS.md
 ├── README.md
-├── docker-compose.yml
 ├── data/                         # local-only reference files, gitignored
 ├── scripts/
-│   ├── windows/                  # no-Docker Windows helpers
-│   └── windows-docker/           # Windows Docker helpers
+│   └── windows/                  # no-Docker Windows helpers
 └── drift-book-lite/
     ├── backend/
     │   ├── prisma/schema.prisma
@@ -189,7 +187,7 @@ Deployment/config changes should keep `drift-book-lite/backend/tests/deployment-
 - R-003 completed: admin carousel deletion removes uploaded copies while preserving default source assets.
 - R-008 completed: SQLite WAL, compression, sensitive word cache, and homepage cache are in place.
 - R-009 completed: teacher roster uses a cleaned one-time built-in list; teacher review submissions validate by teacher name only.
-- R-004, R-005, R-006, R-007, and R-010 still require confirmation or future implementation. Check `REQUIREMENTS.md` for exact status.
+- R-004, R-005, R-006, R-007, R-011 completed. R-010 still requires infrastructure confirmation. Check `REQUIREMENTS.md` for exact status.
 
 ## Backend Behavior Pointers
 
@@ -215,19 +213,12 @@ Cache invalidation:
 
 ## Deployment Notes
 
-Docker Compose still exists and is covered by deployment config tests, but R-006 tracks simplifying deployment and reducing Docker dependence. For school Windows deployments, prefer the maintained no-Docker instructions in `scripts/windows/WINDOWS-NO-DOCKER-DEPLOY.md` unless the user explicitly wants Docker.
+Docker deployment files have been removed. For school Windows deployments, use the maintained no-Docker instructions in `scripts/windows/WINDOWS-NO-DOCKER-DEPLOY.md` and the root helper scripts `deploy.bat`, `start.bat`, and `backup.bat`.
 
-Root `.env` drives Docker Compose:
-
-- `BACKEND_PORT`, `FRONTEND_PORT`, `ADMIN_FRONTEND_PORT`
-- `APP_BASE_URL`, `ADMIN_APP_BASE_URL`
-- `FRONTEND_API_BASE_URL`, `ADMIN_FRONTEND_API_BASE_URL`
-- `JWT_SECRET`, `ADMIN_USERNAMES`, `ADMIN_PASSWORD`
-- Student and teacher roster paths are set inside `docker-compose.yml` to container paths.
+The clean deploy package intentionally does not migrate the local SQLite database or uploaded runtime files. New machines should deploy a fresh database and import books, students, sensitive words, and site assets through the application flow.
 
 When adding a new bundled resource directory, update all of these together:
 
-- `docker-compose.yml`
 - `.env.example`
 - `drift-book-lite/backend/.env.example`
 - Windows deploy scripts if they generate `.env`

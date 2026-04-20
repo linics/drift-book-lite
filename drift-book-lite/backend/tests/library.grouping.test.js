@@ -873,7 +873,7 @@ describe("library grouped book ids and aggregation", () => {
 
     expect(await listApprovedReviews(String(survivor.id))).toEqual([]);
 
-    const adminReviews = await listAdminReviews({ status: "approved" });
+    const { reviews: adminReviews } = await listAdminReviews({ status: "approved" });
     expect(adminReviews).toEqual([
       expect.objectContaining({
         id: review.id,

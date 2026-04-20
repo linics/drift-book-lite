@@ -7,3 +7,5 @@ dist/
 prisma/test.db
 prisma/test.db-wal
 prisma/test.db-shm
+prisma/dev.db-wal
+prisma/dev.db-shm

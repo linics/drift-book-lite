@@ -1,6 +1,6 @@
 # Windows 部署说明
 
-本文是 Windows 上部署”一本书的漂流”系统的完整参考文档。
+本文是 Windows 上部署”一本书的旅行”系统的完整参考文档。
 
 本文基于当前仓库结构：
 
@@ -290,11 +290,11 @@ npm.cmd run build
 
 不用 Docker 后，最关键的持久化数据通常在这些位置：
 
-- `drift-book-lite/backend/dev.db`
-- `drift-book-lite/backend/uploads/`
+- `drift-book-lite/backend/prisma/dev.db`
+- `drift-book-lite/uploads/`
 - `drift-book-lite/resources/default-site-assets/`
 - `drift-book-lite/resources/default-book-catalog/`
-- 本机学生名册文件，例如 `package-data/student-roster.xls` 或 `drift-book-lite/resources/default-student-roster/2025学年学生信息.xls`
+- 本机学生名册文件，例如 `drift-book-lite/resources/default-student-roster/2025学年学生信息.xls`
 - 各目录下实际使用的 `.env`
 
 至少要定期备份这些内容。
@@ -303,8 +303,8 @@ npm.cmd run build
 
 下面这些操作风险高：
 
-- 删除 `drift-book-lite/backend/dev.db`
-- 删除 `drift-book-lite/backend/uploads/`
+- 删除 `drift-book-lite/backend/prisma/dev.db`
+- 删除 `drift-book-lite/uploads/`
 - 换电脑时只复制代码，不复制数据库和上传文件
 
 ### 5. 建议固定 Node 版本

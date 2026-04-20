@@ -2,7 +2,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const request = require("supertest");
-const XLSX = require("xlsx");
+const XLSX = require("@e965/xlsx");
 const { prisma } = require("../src/lib/prisma");
 
 const APP_MODULES = [
@@ -101,7 +101,7 @@ async function createAppWithDefaults(fixture) {
 async function loginAsAdmin(app) {
   const response = await request(app).post("/api/admin/login").send({
     username: "admin1",
-    password: "change-this-password",
+    password: "jyzx2026",
   });
   expect(response.status).toBe(200);
   return response.body.token;

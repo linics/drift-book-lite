@@ -249,11 +249,14 @@ router.post("/student-roster/import-default", async (_req, res) => {
 });
 
 router.get("/reviews", async (req, res) => {
-  const reviews = await listAdminReviews({
+  const result = await listAdminReviews({
     status: req.query.status,
     bookId: req.query.bookId,
+    query: req.query.q,
+    page: req.query.page,
+    pageSize: req.query.pageSize,
   });
-  res.json({ reviews });
+  res.json(result);
 });
 
 router.get("/reviews/export", async (_req, res) => {

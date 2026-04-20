@@ -167,7 +167,7 @@ describe("Account settings", () => {
     render(<App />);
 
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText("当前密码"), "change-this-password");
+    await user.type(await screen.findByLabelText("当前密码"), "jyzx2026");
     await user.type(screen.getByLabelText("新密码"), "new-admin-password");
     await user.type(screen.getByLabelText("确认新密码"), "different-password");
     await user.click(screen.getByRole("button", { name: "更新密码" }));
@@ -181,7 +181,7 @@ describe("Account settings", () => {
     render(<App />);
 
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText("当前密码"), "change-this-password");
+    await user.type(await screen.findByLabelText("当前密码"), "jyzx2026");
     await user.type(screen.getByLabelText("新密码"), "new-admin-password");
     await user.type(screen.getByLabelText("确认新密码"), "new-admin-password");
     await user.click(screen.getByRole("button", { name: "更新密码" }));
@@ -190,7 +190,7 @@ describe("Account settings", () => {
       expect(mockPatch).toHaveBeenCalledWith(
         "/admin/me/password",
         {
-          currentPassword: "change-this-password",
+          currentPassword: "jyzx2026",
           newPassword: "new-admin-password",
         },
         expect.objectContaining({
@@ -436,14 +436,17 @@ const pendingReview = {
   },
 };
 
+const reviewsResponse = {
+  reviews: [pendingReview],
+  pagination: { page: 1, pageSize: 30, total: 1, totalPages: 1 },
+};
+
 describe("ReviewsPage", () => {
   beforeEach(() => {
     mockGet.mockReset();
     mockPatch.mockReset();
     mockPut.mockReset();
-    mockGet.mockImplementation(() =>
-      Promise.resolve({ data: { reviews: [pendingReview] } })
-    );
+    mockGet.mockImplementation(() => Promise.resolve({ data: reviewsResponse }));
   });
 
   test("shows book title and original content", async () => {
@@ -453,6 +456,87 @@ describe("ReviewsPage", () => {
     expect(await screen.findByText("漂流书目")).toBeInTheDocument();
     expect(screen.getByText(/原文：这是一条待审核的留言。/)).toBeInTheDocument();
     expect(screen.getByText(/提交时间：2026/)).toBeInTheDocument();
+    expect(mockGet).toHaveBeenCalledWith(
+      "/admin/reviews",
+      expect.objectContaining({
+        params: expect.objectContaining({ status: "pending", page: 1, pageSize: 30 }),
+      })
+    );
+  });
+
+  test("searches and resets review query with book-page style controls", async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: reviewsResponse })
+      .mockResolvedValueOnce({
+        data: {
+          reviews: [{ ...pendingReview, id: "r2", originalContent: "命中检索的留言", finalContent: "命中检索的留言" }],
+          pagination: { page: 1, pageSize: 30, total: 1, totalPages: 1 },
+        },
+      })
+      .mockResolvedValueOnce({ data: reviewsResponse });
+
+    wrap(<ReviewsPage token={TOKEN} onLogout={NOOP} />);
+    await screen.findByText("漂流书目");
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("综合检索"), "李老师");
+    await user.click(screen.getByRole("button", { name: "搜索" }));
+
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenLastCalledWith(
+        "/admin/reviews",
+        expect.objectContaining({
+          params: expect.objectContaining({
+            status: "pending",
+            q: "李老师",
+            page: 1,
+            pageSize: 30,
+          }),
+        })
+      )
+    );
+
+    await user.click(screen.getByRole("button", { name: "重置" }));
+
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenLastCalledWith(
+        "/admin/reviews",
+        expect.objectContaining({
+          params: expect.objectContaining({ status: "pending", page: 1, pageSize: 30 }),
+        })
+      )
+    );
+    expect(mockGet.mock.calls.at(-1)[1].params).not.toHaveProperty("q");
+  });
+
+  test("loads next page of reviews with current search filters", async () => {
+    mockGet
+      .mockResolvedValueOnce({
+        data: {
+          reviews: [pendingReview],
+          pagination: { page: 1, pageSize: 30, total: 31, totalPages: 2 },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          reviews: [{ ...pendingReview, id: "r2", originalContent: "第二页留言", finalContent: "第二页留言" }],
+          pagination: { page: 2, pageSize: 30, total: 31, totalPages: 2 },
+        },
+      });
+
+    wrap(<ReviewsPage token={TOKEN} onLogout={NOOP} />);
+    await screen.findByText("漂流书目");
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "下一页" }));
+
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenLastCalledWith(
+        "/admin/reviews",
+        expect.objectContaining({
+          params: expect.objectContaining({ status: "pending", page: 2, pageSize: 30 }),
+        })
+      )
+    );
   });
 
   test("shows student identity info", async () => {

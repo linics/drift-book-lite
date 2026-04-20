@@ -20,7 +20,7 @@ const defaultProcessContent = [
   {
     id: "step-1",
     title: "扫码进入活动",
-    description: "使用学校平板扫描统一二维码，进入“一本书的漂流”首页。",
+    description: "使用学校平板扫描统一二维码，进入“一本书的旅行”首页。",
   },
   {
     id: "step-2",

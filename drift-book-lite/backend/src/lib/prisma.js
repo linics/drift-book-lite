@@ -2,9 +2,16 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-// Enable WAL mode for better read/write concurrency under load
-prisma.$executeRawUnsafe("PRAGMA journal_mode=WAL;").catch(() => {});
-prisma.$executeRawUnsafe("PRAGMA synchronous=NORMAL;").catch(() => {});
-prisma.$executeRawUnsafe("PRAGMA busy_timeout=5000;").catch(() => {});
+async function initPragmas() {
+  await prisma.$queryRawUnsafe("PRAGMA journal_mode=WAL;").catch((e) =>
+    console.warn("PRAGMA journal_mode=WAL failed:", e.message)
+  );
+  await prisma.$queryRawUnsafe("PRAGMA synchronous=NORMAL;").catch((e) =>
+    console.warn("PRAGMA synchronous=NORMAL failed:", e.message)
+  );
+  await prisma.$queryRawUnsafe("PRAGMA busy_timeout=5000;").catch((e) =>
+    console.warn("PRAGMA busy_timeout=5000 failed:", e.message)
+  );
+}
 
-module.exports = { prisma };
+module.exports = { prisma, initPragmas };
