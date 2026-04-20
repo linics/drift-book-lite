@@ -7,10 +7,12 @@ const { Prisma } = require("@prisma/client");
 const { publicRouter } = require("./routes/public");
 const { adminRouter } = require("./routes/admin");
 const { bootstrapSystem } = require("./services/bootstrap");
-const { uploadsDir, projectRoot, appBaseUrl, adminAppBaseUrl } = require("./lib/env");
+const { uploadsDir, appBaseUrl, adminAppBaseUrl } = require("./lib/env");
 const { HttpError } = require("./utils/httpError");
+const { initPragmas } = require("./lib/prisma");
 
 async function createApp() {
+  await initPragmas();
   await bootstrapSystem();
 
   const app = express();
@@ -28,7 +30,7 @@ async function createApp() {
   app.use("/uploads", express.static(uploadsDir));
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, projectRoot });
+    res.json({ ok: true });
   });
 
   app.use("/api", publicRouter);

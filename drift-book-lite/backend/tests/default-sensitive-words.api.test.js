@@ -91,7 +91,7 @@ async function clearData() {
   }
 }
 
-async function loginAs(app, username = "admin1", password = "change-this-password") {
+async function loginAs(app, username = "admin1", password = "jyzx2026") {
   const response = await request(app).post("/api/admin/login").send({
     username,
     password,

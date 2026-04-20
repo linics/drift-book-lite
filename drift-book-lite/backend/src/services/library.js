@@ -1,7 +1,7 @@
 const { TextDecoder } = require("util");
 const { parse: csvParse } = require("csv-parse/sync");
 const path = require("path");
-const XLSX = require("xlsx");
+const XLSX = require("@e965/xlsx");
 const { prisma } = require("../lib/prisma");
 const { HttpError } = require("../utils/httpError");
 const {
@@ -1645,7 +1645,11 @@ async function updateBook(id, data) {
   return serializeBookSummary(updated);
 }
 
-async function listAdminReviews({ status, bookId }) {
+async function listAdminReviews({ status, bookId, query, page, pageSize }) {
+  const paginationRequested = page !== undefined || pageSize !== undefined;
+  const normalizedPage = Math.max(1, Number(page) || 1);
+  const normalizedPageSize = Math.min(100, Math.max(1, Number(pageSize) || 20));
+  const trimmedQuery = String(query || "").trim();
   const where = {};
   if (status) where.status = status;
   if (bookId) {
@@ -1657,15 +1661,60 @@ async function listAdminReviews({ status, bookId }) {
       where.bookId = { in: books.map((book) => book.id) };
     }
   }
+  if (trimmedQuery) {
+    where.OR = [
+      { originalContent: { contains: trimmedQuery } },
+      { finalContent: { contains: trimmedQuery } },
+      { displayName: { contains: trimmedQuery } },
+      { studentSystemId: { contains: trimmedQuery } },
+      { studentName: { contains: trimmedQuery } },
+      { studentClassName: { contains: trimmedQuery } },
+      { teacherName: { contains: trimmedQuery } },
+      {
+        book: {
+          is: {
+            OR: [
+              { title: { contains: trimmedQuery } },
+              { author: { contains: trimmedQuery } },
+              { publisher: { contains: trimmedQuery } },
+              { bookId: { contains: trimmedQuery } },
+              { barcode: { contains: trimmedQuery } },
+              { callNumber: { contains: trimmedQuery } },
+            ],
+          },
+        },
+      },
+    ];
+  }
 
-  const reviews = await prisma.bookReview.findMany({
+  const reviewQuery = {
     where,
     include: { book: true },
-    orderBy: [{ createdAt: "desc" }],
-  });
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    ...(paginationRequested
+      ? {
+          skip: (normalizedPage - 1) * normalizedPageSize,
+          take: normalizedPageSize,
+        }
+      : {}),
+  };
 
+  const [total, reviews] = await prisma.$transaction([
+    prisma.bookReview.count({ where }),
+    prisma.bookReview.findMany(reviewQuery),
+  ]);
+
+  const effectivePageSize = paginationRequested ? normalizedPageSize : total;
   await annotateReviews(reviews);
-  return reviews.map(serializeReviewForAdmin);
+  return {
+    reviews: reviews.map(serializeReviewForAdmin),
+    pagination: {
+      page: paginationRequested ? normalizedPage : 1,
+      pageSize: effectivePageSize,
+      total,
+      totalPages: paginationRequested ? Math.max(1, Math.ceil(total / normalizedPageSize)) : 1,
+    },
+  };
 }
 
 async function updateReview(id, adminUserId, { action, finalContent }) {

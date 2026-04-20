@@ -1,7 +1,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const XLSX = require("xlsx");
+const XLSX = require("@e965/xlsx");
 const { prisma } = require("../src/lib/prisma");
 
 function writeRoster(rows) {

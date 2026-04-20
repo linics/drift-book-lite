@@ -41,7 +41,7 @@ async function clearData() {
   }
 }
 
-async function loginAs(username, password = "change-this-password") {
+async function loginAs(username, password = "jyzx2026") {
   const response = await request(app).post("/api/admin/login").send({
     username,
     password,
@@ -144,7 +144,7 @@ describe("forum v2 api", () => {
 
     const defaultPasswordLogin = await request(app).post("/api/admin/login").send({
       username: "admin1",
-      password: "change-this-password",
+      password: "jyzx2026",
     });
     expect(defaultPasswordLogin.status).toBe(401);
   });
@@ -156,7 +156,7 @@ describe("forum v2 api", () => {
       .patch("/api/admin/me/password")
       .set("Authorization", `Bearer ${oldToken}`)
       .send({
-        currentPassword: "change-this-password",
+        currentPassword: "jyzx2026",
         newPassword: "new-admin-password",
       });
     expect(changeResponse.status).toBe(200);
@@ -164,7 +164,7 @@ describe("forum v2 api", () => {
 
     const oldPasswordLogin = await request(app).post("/api/admin/login").send({
       username: "admin1",
-      password: "change-this-password",
+      password: "jyzx2026",
     });
     expect(oldPasswordLogin.status).toBe(401);
 
@@ -204,7 +204,7 @@ describe("forum v2 api", () => {
       .patch("/api/admin/me/password")
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
-        currentPassword: "change-this-password",
+        currentPassword: "jyzx2026",
         newPassword: "short",
       });
 
@@ -218,8 +218,8 @@ describe("forum v2 api", () => {
       .patch("/api/admin/me/password")
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
-        currentPassword: "change-this-password",
-        newPassword: "change-this-password",
+        currentPassword: "jyzx2026",
+        newPassword: "jyzx2026",
       });
 
     expect(response.status).toBe(400);

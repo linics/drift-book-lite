@@ -172,7 +172,7 @@ describe("default site assets bootstrap", () => {
       const app = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
       const login = await request(app).post("/api/admin/login").send({
         username: "admin1",
-        password: "change-this-password",
+        password: "jyzx2026",
       });
 
       await prisma.siteAsset.update({
@@ -223,7 +223,7 @@ describe("default site assets bootstrap", () => {
       const app = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
       const login = await request(app).post("/api/admin/login").send({
         username: "admin1",
-        password: "change-this-password",
+        password: "jyzx2026",
       });
 
       const reloadRes = await request(app)
@@ -260,7 +260,7 @@ describe("default site assets bootstrap", () => {
       const app = await createAppWithDefaultSiteAssetsDir(defaultSiteAssetsDir);
       const login = await request(app).post("/api/admin/login").send({
         username: "admin1",
-        password: "change-this-password",
+        password: "jyzx2026",
       });
 
       const initialAssets = await request(app).get("/api/site-assets");

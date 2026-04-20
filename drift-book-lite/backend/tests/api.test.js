@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const request = require("supertest");
-const XLSX = require("xlsx");
+const XLSX = require("@e965/xlsx");
 const { prisma } = require("../src/lib/prisma");
 const { createApp } = require("../src/app");
 
@@ -93,7 +93,7 @@ describe("drift book lite api", () => {
 
     const login = await request(app).post("/api/admin/login").send({
       username: "admin1",
-      password: "change-this-password",
+      password: "jyzx2026",
     });
     adminToken = login.body.token;
   });
@@ -301,7 +301,7 @@ describe("drift book lite api", () => {
   test("rejects stale admin token before touching protected write APIs", async () => {
     const firstLogin = await request(app).post("/api/admin/login").send({
       username: "admin1",
-      password: "change-this-password",
+      password: "jyzx2026",
     });
     const staleToken = firstLogin.body.token;
 
@@ -375,7 +375,7 @@ describe("drift book lite api", () => {
       let freshApp = await require("../src/app").createApp();
       const loginResponse = await request(freshApp).post("/api/admin/login").send({
         username: "admin2",
-        password: "change-this-password",
+        password: "jyzx2026",
       });
       expect(loginResponse.status).toBe(200);
 
@@ -546,6 +546,139 @@ describe("drift book lite api", () => {
         pageSize: 2,
         total: 3,
         totalPages: 2,
+      })
+    );
+  });
+
+  test("lists admin reviews with pagination metadata and combined query filter", async () => {
+    const csv = Buffer.from(
+      [
+        "book_id,title,author,publisher,total_copies,available_copies",
+        "301,分页留言图书一,作者甲,出版社甲,1,1",
+        "302,综合检索图书二,作者乙,出版社乙,1,1",
+        "303,分页留言图书三,作者丙,出版社丙,1,1",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const importRes = await importCsv(csv, "review-paged.csv");
+    expect(importRes.status).toBe(201);
+
+    const books = await prisma.book.findMany({ orderBy: { bookId: "asc" } });
+    await prisma.bookReview.createMany({
+      data: [
+        {
+          bookId: books[0].id,
+          displayName: "2025届 王小明",
+          originalContent: "第一条分页留言",
+          finalContent: "第一条分页留言",
+          status: "pending",
+          studentSystemId: "320250001",
+          studentName: "王小明",
+          studentClassName: "高一（1）班",
+        },
+        {
+          bookId: books[1].id,
+          displayName: "教师 李老师",
+          originalContent: "这条命中综合检索",
+          finalContent: "这条命中综合检索",
+          status: "approved",
+          identityType: "teacher",
+          teacherName: "李老师",
+        },
+        {
+          bookId: books[2].id,
+          displayName: "2025届 张同学",
+          originalContent: "第三条分页留言",
+          finalContent: "第三条分页留言",
+          status: "hidden",
+          studentSystemId: "320250003",
+          studentName: "张同学",
+          studentClassName: "高一（3）班",
+        },
+      ],
+    });
+
+    const pageRes = await request(app)
+      .get("/api/admin/reviews")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ page: 1, pageSize: 2 });
+    expect(pageRes.status).toBe(200);
+    expect(pageRes.body.reviews).toHaveLength(2);
+    expect(pageRes.body.pagination).toEqual(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 2,
+        total: 3,
+        totalPages: 2,
+      })
+    );
+
+    const filteredRes = await request(app)
+      .get("/api/admin/reviews")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ q: "李老师", page: 1, pageSize: 30 });
+    expect(filteredRes.status).toBe(200);
+    expect(filteredRes.body.reviews).toEqual([
+      expect.objectContaining({
+        displayName: "教师 李老师",
+        originalContent: "这条命中综合检索",
+      }),
+    ]);
+    expect(filteredRes.body.pagination).toEqual(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 30,
+        total: 1,
+        totalPages: 1,
+      })
+    );
+
+    const bookFilteredRes = await request(app)
+      .get("/api/admin/reviews")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ q: "图书三", status: "hidden", page: 1, pageSize: 30 });
+    expect(bookFilteredRes.status).toBe(200);
+    expect(bookFilteredRes.body.reviews).toEqual([
+      expect.objectContaining({
+        displayName: "2025届 张同学",
+        status: "hidden",
+      }),
+    ]);
+  });
+
+  test("keeps unpaginated admin review requests complete for featured management", async () => {
+    const csv = Buffer.from(
+      "book_id,title,author,publisher,total_copies,available_copies\n401,精选管理图书,作者甲,出版社甲,1,1\n",
+      "utf8"
+    );
+
+    const importRes = await importCsv(csv, "featured-review-source.csv");
+    expect(importRes.status).toBe(201);
+
+    const book = await prisma.book.findFirst({ where: { bookId: "401" } });
+    await prisma.bookReview.createMany({
+      data: Array.from({ length: 25 }, (_, index) => ({
+        bookId: book.id,
+        displayName: `2025届 学生${index + 1}`,
+        originalContent: `精选候选留言${index + 1}`,
+        finalContent: `精选候选留言${index + 1}`,
+        status: "approved",
+      })),
+    });
+
+    const response = await request(app)
+      .get("/api/admin/reviews")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ status: "approved" });
+    expect(response.status).toBe(200);
+    expect(response.body.reviews).toHaveLength(25);
+    expect(response.body.pagination).toEqual(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 25,
+        total: 25,
+        totalPages: 1,
       })
     );
   });

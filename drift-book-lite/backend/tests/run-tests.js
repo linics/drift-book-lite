@@ -15,6 +15,7 @@ const env = {
   ...process.env,
   DATABASE_URL: `file:${testDatabasePath}`,
   UPLOADS_DIR: testUploadsDir,
+  ADMIN_PASSWORD: "jyzx2026",
 };
 
 function run(command, args) {

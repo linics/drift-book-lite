@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { parse: csvParse } = require("csv-parse/sync");
-const XLSX = require("xlsx");
+const XLSX = require("@e965/xlsx");
 const { prisma } = require("../lib/prisma");
 const { studentRosterPath } = require("../lib/env");
 

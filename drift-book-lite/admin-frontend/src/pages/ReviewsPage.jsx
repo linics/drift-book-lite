@@ -3,31 +3,77 @@ import { api, authHeaders, requestMessage, isUnauthorized } from "../lib/api.js"
 import { formatDate } from "../lib/helpers.js";
 import { Badge } from "../components/Badge.jsx";
 import { Field } from "../components/Field.jsx";
-import { TextArea, SelectInput } from "../components/Input.jsx";
+import { TextArea, TextInput, SelectInput } from "../components/Input.jsx";
 import { PrimaryButton, SecondaryButton } from "../components/Button.jsx";
 import { StatusMessage } from "../components/StatusMessage.jsx";
 import { EmptyState } from "../components/EmptyState.jsx";
 import { AdminLayout } from "../components/AdminLayout.jsx";
-import { AdminList, AdminListItem, AdminMeta, AdminSection, AdminToolbar } from "../components/AdminUI.jsx";
+import {
+  AdminList,
+  AdminListItem,
+  AdminMeta,
+  AdminPagination,
+  AdminSection,
+  AdminToolbar,
+} from "../components/AdminUI.jsx";
+
+const REVIEW_PAGE_SIZE = 30;
 
 export function ReviewsPage({ token, onLogout }) {
   const [reviews, setReviews] = useState([]);
   const [status, setStatus] = useState("pending");
+  const [query, setQuery] = useState("");
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: REVIEW_PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  });
   const [drafts, setDrafts] = useState({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [exporting, setExporting] = useState(false);
 
-  async function loadReviews(nextStatus = status) {
+  async function loadReviews({
+    nextStatus = status,
+    keyword = query,
+    page = pagination.page,
+    fallbackPage = true,
+  } = {}) {
     try {
+      setError("");
       const response = await api.get("/admin/reviews", {
         headers: authHeaders(token),
-        params: nextStatus ? { status: nextStatus } : {},
+        params: {
+          ...(nextStatus ? { status: nextStatus } : {}),
+          ...(keyword ? { q: keyword } : {}),
+          page,
+          pageSize: REVIEW_PAGE_SIZE,
+        },
       });
-      setReviews(response.data.reviews);
+      const nextReviews = response.data.reviews;
+      const nextPagination = response.data.pagination || {
+        page,
+        pageSize: REVIEW_PAGE_SIZE,
+        total: nextReviews.length,
+        totalPages: 1,
+      };
+
+      if (fallbackPage && nextReviews.length === 0 && nextPagination.page > 1) {
+        await loadReviews({
+          nextStatus,
+          keyword,
+          page: nextPagination.page - 1,
+          fallbackPage: false,
+        });
+        return;
+      }
+
+      setReviews(nextReviews);
+      setPagination(nextPagination);
       setDrafts(
         Object.fromEntries(
-          response.data.reviews.map((review) => [
+          nextReviews.map((review) => [
             review.id,
             {
               finalContent: review.finalContent,
@@ -45,8 +91,8 @@ export function ReviewsPage({ token, onLogout }) {
   }
 
   useEffect(() => {
-    loadReviews();
-  }, [token, status]);
+    loadReviews({ nextStatus: status, keyword: query, page: pagination.page });
+  }, [token]);
 
   function reviewStatusMeta(reviewStatus) {
     if (reviewStatus === "approved") {
@@ -78,7 +124,7 @@ export function ReviewsPage({ token, onLogout }) {
           ? "留言已保存并公开。"
           : "留言已隐藏，前台不再显示。"
       );
-      await loadReviews(status);
+      await loadReviews({ nextStatus: status, keyword: query, page: pagination.page });
     } catch (requestError) {
       if (isUnauthorized(requestError)) {
         onLogout();
@@ -135,7 +181,11 @@ export function ReviewsPage({ token, onLogout }) {
           <Field label="状态筛选">
             <SelectInput
               value={status}
-              onChange={(event) => setStatus(event.target.value)}
+              onChange={(event) => {
+                const nextStatus = event.target.value;
+                setStatus(nextStatus);
+                loadReviews({ nextStatus, keyword: query, page: 1 });
+              }}
               className="md:w-56"
             >
               <option value="pending">待审核</option>
@@ -143,8 +193,57 @@ export function ReviewsPage({ token, onLogout }) {
               <option value="hidden">已下架</option>
             </SelectInput>
           </Field>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field label="综合检索">
+              <TextInput
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    loadReviews({ keyword: event.currentTarget.value, page: 1 });
+                  }
+                }}
+                placeholder="留言、姓名、学号或书名"
+                className="sm:w-72"
+              />
+            </Field>
+            <SecondaryButton
+              type="button"
+              className="shrink-0"
+              onClick={() => loadReviews({ keyword: query, page: 1 })}
+            >
+              搜索
+            </SecondaryButton>
+            <SecondaryButton
+              type="button"
+              className="shrink-0"
+              onClick={() => {
+                setQuery("");
+                loadReviews({ keyword: "", page: 1 });
+              }}
+            >
+              重置
+            </SecondaryButton>
+          </div>
         </AdminToolbar>
-        <div className="mt-5">
+        <div className="mt-5 space-y-4">
+          <AdminPagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalLabel={`第 ${pagination.page} / ${pagination.totalPages} 页，共 ${pagination.total} 条`}
+            prevDisabled={pagination.page <= 1}
+            nextDisabled={pagination.page >= pagination.totalPages}
+            onPrev={() =>
+              loadReviews({ keyword: query, page: Math.max(1, pagination.page - 1) })
+            }
+            onNext={() =>
+              loadReviews({
+                keyword: query,
+                page: Math.min(pagination.totalPages, pagination.page + 1),
+              })
+            }
+          />
           {reviews.length === 0 ? (
             <EmptyState>暂无符合条件的留言。</EmptyState>
           ) : (

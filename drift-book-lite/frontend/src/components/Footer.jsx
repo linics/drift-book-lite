@@ -5,7 +5,7 @@ export function Footer() {
         <p className="text-xs uppercase tracking-[0.3em] text-stone-400">
           上海市敬业中学 · 图书馆
         </p>
-        <p className="mt-2 text-xs text-stone-400">"一本书的漂流" 阅读活动平台</p>
+        <p className="mt-2 text-xs text-stone-400">"一本书的旅行" 阅读活动平台</p>
       </div>
     </footer>
   );
