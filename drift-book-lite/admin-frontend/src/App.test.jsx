@@ -413,7 +413,7 @@ describe("StudentRosterPage", () => {
 const pendingReview = {
   id: "r1",
   status: "pending",
-  displayName: "2025届 王小明",
+  displayName: "2025级 王小明",
   originalContent: "这是一条待审核的留言。",
   finalContent: "这是一条待审核的留言。",
   sequenceNumber: null,
@@ -431,7 +431,7 @@ const pendingReview = {
     systemId: "320250001",
     studentName: "王小明",
     className: "高一（1）班",
-    cohort: "2025届",
+    cohort: "2025级",
     idCardSuffix: "1234",
   },
 };
@@ -545,7 +545,7 @@ describe("ReviewsPage", () => {
     await screen.findByText("漂流书目");
     expect(screen.getByText(/学号：320250001/)).toBeInTheDocument();
     expect(screen.getByText(/姓名：王小明/)).toBeInTheDocument();
-    expect(screen.getByText(/届别：2025届/)).toBeInTheDocument();
+    expect(screen.getByText(/届别：2025级/)).toBeInTheDocument();
     expect(screen.getByText(/班级：高一（1）班/)).toBeInTheDocument();
   });
 

@@ -285,7 +285,7 @@ describe("library grouped book ids and aggregation", () => {
     await prisma.bookReview.create({
       data: {
         bookId: book.id,
-        displayName: "2025届 王沁愉",
+        displayName: "2025级 王沁愉",
         originalContent: "同一本书不能重复提交",
         finalContent: "同一本书不能重复提交",
         identityType: "student",
@@ -329,7 +329,7 @@ describe("library grouped book ids and aggregation", () => {
     await prisma.bookReview.create({
       data: {
         bookId: book.id,
-        displayName: "2025届 王沁愉",
+        displayName: "2025级 王沁愉",
         originalContent: "同一本书不能重复提交",
         finalContent: "同一本书不能重复提交",
         identityType: "student",

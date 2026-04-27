@@ -569,7 +569,7 @@ describe("drift book lite api", () => {
       data: [
         {
           bookId: books[0].id,
-          displayName: "2025届 王小明",
+          displayName: "2025级 王小明",
           originalContent: "第一条分页留言",
           finalContent: "第一条分页留言",
           status: "pending",
@@ -588,7 +588,7 @@ describe("drift book lite api", () => {
         },
         {
           bookId: books[2].id,
-          displayName: "2025届 张同学",
+          displayName: "2025级 张同学",
           originalContent: "第三条分页留言",
           finalContent: "第三条分页留言",
           status: "hidden",
@@ -641,7 +641,7 @@ describe("drift book lite api", () => {
     expect(bookFilteredRes.status).toBe(200);
     expect(bookFilteredRes.body.reviews).toEqual([
       expect.objectContaining({
-        displayName: "2025届 张同学",
+        displayName: "2025级 张同学",
         status: "hidden",
       }),
     ]);
@@ -660,7 +660,7 @@ describe("drift book lite api", () => {
     await prisma.bookReview.createMany({
       data: Array.from({ length: 25 }, (_, index) => ({
         bookId: book.id,
-        displayName: `2025届 学生${index + 1}`,
+        displayName: `2025级 学生${index + 1}`,
         originalContent: `精选候选留言${index + 1}`,
         finalContent: `精选候选留言${index + 1}`,
         status: "approved",

@@ -37,7 +37,7 @@ describe("student roster service", () => {
 
   test("parses cohort from system id", () => {
     const { parseStudentCohort } = loadStudentRosterModule();
-    expect(parseStudentCohort("320250001")).toBe("2025届");
+    expect(parseStudentCohort("320250001")).toBe("2025级");
     expect(parseStudentCohort("ABC")).toBe("");
   });
 
