@@ -58,7 +58,7 @@ const homepagePayload = {
       bookId: "book-1",
       bookTitle: "第一本书",
       content: "精选内容 1",
-      displayName: "2025届 王小明",
+      displayName: "2025级 王小明",
       sequenceNumber: 3,
     },
     {
@@ -66,7 +66,7 @@ const homepagePayload = {
       bookId: "book-2",
       bookTitle: "第二本书",
       content: "精选内容 2",
-      displayName: "2025届 李小红",
+      displayName: "2025级 李小红",
       sequenceNumber: 4,
     },
     {
@@ -74,7 +74,7 @@ const homepagePayload = {
       bookId: "book-3",
       bookTitle: "第三本书",
       content: "精选内容 3",
-      displayName: "2025届 张小强",
+      displayName: "2025级 张小强",
       sequenceNumber: 5,
     },
     {
@@ -82,7 +82,7 @@ const homepagePayload = {
       bookId: "book-4",
       bookTitle: "第四本书",
       content: "精选内容 4",
-      displayName: "2025届 周小雨",
+      displayName: "2025级 周小雨",
       sequenceNumber: 6,
     },
     {
@@ -90,7 +90,7 @@ const homepagePayload = {
       bookId: "book-5",
       bookTitle: "第五本书",
       content: "精选内容 5",
-      displayName: "2025届 吴小雪",
+      displayName: "2025级 吴小雪",
       sequenceNumber: 7,
     },
     {
@@ -98,7 +98,7 @@ const homepagePayload = {
       bookId: "book-6",
       bookTitle: "第六本书",
       content: "精选内容 6",
-      displayName: "2025届 郑小青",
+      displayName: "2025级 郑小青",
       sequenceNumber: 8,
     },
   ],
@@ -255,7 +255,7 @@ describe("BookDetailPage", () => {
     reviews: [
       {
         id: "r1",
-        displayName: "2025届 王小明",
+        displayName: "2025级 王小明",
         content: "这是一条接龙留言。",
         sequenceNumber: 1,
         reviewedAt: "2026-01-01T00:00:00Z",

@@ -11,7 +11,7 @@ const studentIdentity = {
   studentName: "王沁愉",
   idCardSuffix: "3225",
   className: "高一(01)班",
-  cohort: "2025届",
+  cohort: "2025级",
 };
 
 async function clearTableIfExists(tableName) {
@@ -370,7 +370,7 @@ describe("forum v2 api", () => {
     await prisma.bookReview.create({
       data: {
         bookId: internalBook.id,
-        displayName: "2025届 待审核同学",
+        displayName: "2025级 待审核同学",
         originalContent: "这条仍在待审核",
         finalContent: "这条仍在待审核",
         status: "pending",
@@ -385,7 +385,7 @@ describe("forum v2 api", () => {
     await prisma.bookReview.create({
       data: {
         bookId: internalBook.id,
-        displayName: "2025届 已拒绝同学",
+        displayName: "2025级 已拒绝同学",
         originalContent: "这条旧拒绝记录不应占公开层号",
         finalContent: "这条旧拒绝记录不应占公开层号",
         status: "rejected",
@@ -402,7 +402,7 @@ describe("forum v2 api", () => {
     const approvedReview = await prisma.bookReview.create({
       data: {
         bookId: internalBook.id,
-        displayName: "2025届 公开同学",
+        displayName: "2025级 公开同学",
         originalContent: "这是唯一公开的一层",
         finalContent: "这是唯一公开的一层",
         status: "approved",
@@ -466,11 +466,11 @@ describe("forum v2 api", () => {
     expect(adminPendingResponse.status).toBe(200);
     expect(adminPendingResponse.body.reviews[0]).toEqual(
       expect.objectContaining({
-        displayName: "2026届 赵同学",
+        displayName: "2026级 赵同学",
         studentIdentity: expect.objectContaining({
           systemId: "320260001",
           studentName: "赵同学",
-          cohort: "2026届",
+          cohort: "2026级",
           idCardSuffix: null,
         }),
       })
@@ -557,7 +557,7 @@ describe("forum v2 api", () => {
     expect(exportResponse.headers["content-type"]).toContain("text/csv");
     expect(exportResponse.text.startsWith("\uFEFF")).toBe(true);
     expect(exportResponse.text).toContain("评论ID,状态,图书标题,公开显示名");
-    expect(exportResponse.text).toContain("2025届 王沁愉");
+    expect(exportResponse.text).toContain("2025级 王沁愉");
     expect(exportResponse.text).toContain("教师姓名");
     expect(exportResponse.text).toContain("导出测试留言");
   });

@@ -47,7 +47,7 @@ function normalizeIdCardSuffix(value) {
 function parseStudentCohort(systemId) {
   const normalized = normalizeCell(systemId);
   const matched = normalized.match(/^3(\d{4})/);
-  return matched ? `${matched[1]}届` : "";
+  return matched ? `${matched[1]}级` : "";
 }
 
 function buildStudentDisplayName(systemId, studentName) {
