@@ -18,11 +18,11 @@ setlocal EnableExtensions EnableDelayedExpansion
 :: ============================================================
 :: Patch metadata  (update this block for each new patch)
 :: ============================================================
-set "PATCH_ID=r015"
+set "PATCH_ID=r016"
 set "PATCH_DATE=2026-04-27"
-set "PATCH_DESC=学生届别显示从"届"改为"级""
+set "PATCH_DESC=首页显示当前总留言量"
 set "RESTART_BACKEND=1"
-set "NEEDS_FRONTEND_BUILD=0"
+set "NEEDS_FRONTEND_BUILD=1"
 set "NEEDS_PRISMA_PUSH=0"
 :: ============================================================
 
@@ -95,7 +95,9 @@ echo.
 :: File list  (add one call :patch_file line per changed file)
 :: Use forward slashes; path is relative to the system root.
 :: ============================================================
-call :patch_file "drift-book-lite/backend/src/services/studentRoster.js"
+call :patch_file "drift-book-lite/backend/src/services/library.js"
+if errorlevel 1 goto :fail
+call :patch_file "drift-book-lite/frontend/src/pages/HomePage.jsx"
 if errorlevel 1 goto :fail
 :: ============================================================
 
