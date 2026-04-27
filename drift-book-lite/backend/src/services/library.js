@@ -2017,6 +2017,7 @@ async function _buildHomepageData() {
   return {
     activityBooks,
     featuredReviews: await getFeaturedReviews(),
+    totalReviewCount: approvedReviews.length,
   };
 }
 
