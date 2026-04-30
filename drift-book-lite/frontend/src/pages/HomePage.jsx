@@ -100,6 +100,9 @@ export function HomePage() {
                     {item}
                   </span>
                 ))}
+                <span className="rounded-full border border-stone-200/80 bg-white/72 px-3 py-2">
+                  当前总留言量：{homepage.totalReviewCount}
+                </span>
               </div>
             </div>
           </section>
