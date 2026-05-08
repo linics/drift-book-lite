@@ -246,7 +246,7 @@ export function BookDetailPage() {
                   disabled={submitting}
                 />
               </Field>
-              <Field label="留言内容" hint="最多 500 字。">
+              <Field label="留言内容" hint="最多 2000 字。">
                 <TextArea
                   rows={5}
                   value={formState.content}

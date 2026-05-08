@@ -72,7 +72,7 @@ const importSchema = z.object({
 
 const updateReviewSchema = z.object({
   action: z.enum(["approve", "hide"]),
-  finalContent: z.string().trim().min(1).max(500).optional(),
+  finalContent: z.string().trim().min(1).max(2000).optional(),
 });
 
 const updateAssetSchema = z.object({

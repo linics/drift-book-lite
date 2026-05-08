@@ -1,18 +1,4 @@
 @echo off
-if "%~1"=="__run" goto :run
-cmd /d /c call "%~f0" __run
-set "RESULT=%ERRORLEVEL%"
-echo.
-if "%RESULT%"=="0" (
-  echo Patch applied successfully.
-) else (
-  echo Patch failed with exit code %RESULT%.
-  echo Please copy the last error message above if you need help.
-)
-pause
-exit /b %RESULT%
-
-:run
 setlocal EnableExtensions EnableDelayedExpansion
 
 :: ============================================================

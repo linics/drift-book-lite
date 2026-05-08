@@ -17,12 +17,12 @@ const createReviewSchema = z.object({
   studentName: z.string().trim().min(1).max(50),
   idCardSuffix: z.string().trim().min(4).max(4).optional().or(z.literal("")),
   teacherName: z.string().trim().min(1).max(50).optional(),
-  content: z.string().trim().min(1).max(500),
+  content: z.string().trim().min(1).max(2000),
 }).or(
   z.object({
     identityType: z.literal("teacher"),
     teacherName: z.string().trim().min(1).max(50),
-    content: z.string().trim().min(1).max(500),
+    content: z.string().trim().min(1).max(2000),
   })
 );
 

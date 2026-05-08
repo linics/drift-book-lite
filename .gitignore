@@ -39,3 +39,5 @@ backups/
 /*.csv
 /*.xlsx
 /*.xls
+/*.zip
+/drift-book-lite-*/
